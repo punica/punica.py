@@ -2,7 +2,8 @@ import requests
 import json
 import threading
 import event_emitter
-from bottle import run, route, Bottle
+from multiprocessing import Queue, Process
+import socket
 
 class Service(event_emitter.EventEmitter):
 	def __init__(self, opts = None):
@@ -14,7 +15,7 @@ class Service(event_emitter.EventEmitter):
 			'username' : '',
 			'password' : '',
 			'interval' : 1.234,
-			'polling' : True,
+			'polling' : False,
 			'port' : 5725
 		}
 		self.authenticationToken = '';
@@ -25,10 +26,8 @@ class Service(event_emitter.EventEmitter):
 			pullEvent = threading.Event()
 			self._pullAndProcess(pullEvent)
 		else:
-			pass
-			# serverRun = threading.Thread(target = self.createServer)
-			# serverRun.start()
-			# self.registerNotificationCallback()
+			print('after start')
+			self.createServer()
 
 	def stop(self):
 		print('stop')
@@ -43,14 +42,29 @@ class Service(event_emitter.EventEmitter):
 				self.t = threading.Timer(self.config['interval'], self._pullAndProcess, [pullEvent]).start()
 				
 	def createServer(self):
-		app = Bottle()
+		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		
-		@app.route('/notification/<data>', method = 'PUT')
-		def process(data):
-			print('server process')
-			self._processEvents(data)
-
-		run(app, host = 'localhost', port = 5725, debug = False)
+		self.s.bind(('localhost', 5725))
+		
+		self.s.listen(10)
+		print 'Socket now listening'
+		 
+		while 1:
+			conn, addr = self.s.accept()
+			 
+			#print 'Connected with ' + addr[0] + ':' + str(addr[1])
+			
+			data = conn.recv(1024)
+			print(type(data))
+			print(json.loads(data))
+			
+			reply = 'OK...' + data
+			if not data: 
+				break
+			 
+			conn.sendall(reply)
+			conn.close()
+			#self._processEvents()
 				
 	def registerNotificationCallback(self):
 		data = {
