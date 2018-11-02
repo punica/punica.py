@@ -18,53 +18,57 @@ class Service(event_emitter.EventEmitter):
 			'polling' : False,
 			'port' : 5725
 		}
-		self.authenticationToken = '';
-		self.tokenValidation = 3600;
+		self.authenticationToken = ''
+		self.tokenValidation = 3600
 
 	def start(self):
 		if self.config['polling']:
-			pullEvent = threading.Event()
-			self._pullAndProcess(pullEvent)
+			self.pullEvent = threading.Event()
+			self._pullAndProcess()
 		else:
-			print('after start')
-			self.createServer()
+			self.server = threading.Thread(target = self.createServer)
+			self.server.start()
+			self.registerNotificationCallback()
 
 	def stop(self):
-		print('stop')
+		if self.config['polling']:
+			self.pullEvent.set()
+		else:
+			self.shutDownServer()
 		
 	def pullNotification(self):
 		response = self.get('/notification/pull')
 		return response.json()
 		
-	def _pullAndProcess(self, pullEvent):
+	def _pullAndProcess(self):
 		self._processEvents(self.pullNotification())
-		if not pullEvent.is_set():
-				self.t = threading.Timer(self.config['interval'], self._pullAndProcess, [pullEvent]).start()
+		self.t = threading.Timer(self.config['interval'], self._pullAndProcess)
+		if not self.pullEvent.is_set():
+				self.t.start()
 				
 	def createServer(self):
 		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		
 		self.s.bind(('localhost', 5725))
-		
 		self.s.listen(10)
-		print 'Socket now listening'
+		self.serverRun = True
 		 
-		while 1:
-			conn, addr = self.s.accept()
-			 
-			#print 'Connected with ' + addr[0] + ':' + str(addr[1])
-			
+		while self.serverRun:
+			conn, addr = self.s.accept()		
 			data = conn.recv(1024)
-			print(type(data))
-			print(json.loads(data))
+			dataSplit = data.split('{"registrations"');
+			dataJson = json.loads('{"registrations"' + dataSplit[1])
 			
 			reply = 'OK...' + data
 			if not data: 
 				break
-			 
 			conn.sendall(reply)
 			conn.close()
-			#self._processEvents()
+			self._processEvents(dataJson)
+		self.s.close()
+			
+	def shutDownServer(self):
+		#deleteCallback()
+		self.serverRun = False
 				
 	def registerNotificationCallback(self):
 		data = {
@@ -80,6 +84,7 @@ class Service(event_emitter.EventEmitter):
 			return response.status_code
 		
 	def _processEvents(self, data):
+		print(data)
 		for i in data['registrations']:
 			self.emit('register', i['name'])
 			
