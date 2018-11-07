@@ -2,7 +2,7 @@ import requests
 import json
 import threading
 import event_emitter
-from bottle import run, route, Bottle
+import socket
 
 class Service(event_emitter.EventEmitter):
 	def __init__(self, opts = None):
@@ -14,43 +14,60 @@ class Service(event_emitter.EventEmitter):
 			'username' : '',
 			'password' : '',
 			'interval' : 1.234,
-			'polling' : True,
+			'polling' : False,
 			'port' : 5725
 		}
-		self.authenticationToken = '';
-		self.tokenValidation = 3600;
+		self.authenticationToken = ''
+		self.tokenValidation = 3600
 
 	def start(self):
 		if self.config['polling']:
-			pullEvent = threading.Event()
-			self._pullAndProcess(pullEvent)
+			self.pullEvent = threading.Event()
+			self._pullAndProcess()
 		else:
-			pass
-			# serverRun = threading.Thread(target = self.createServer)
-			# serverRun.start()
-			# self.registerNotificationCallback()
+			self.server = threading.Thread(target = self.createServer)
+			self.server.start()
+			self.registerNotificationCallback()
 
 	def stop(self):
-		print('stop')
+		if self.config['polling']:
+			self.pullEvent.set()
+		else:
+			self.shutDownServer()
 		
 	def pullNotification(self):
 		response = self.get('/notification/pull')
 		return response.json()
 		
-	def _pullAndProcess(self, pullEvent):
+	def _pullAndProcess(self):
 		self._processEvents(self.pullNotification())
-		if not pullEvent.is_set():
-				self.t = threading.Timer(self.config['interval'], self._pullAndProcess, [pullEvent]).start()
+		self.t = threading.Timer(self.config['interval'], self._pullAndProcess)
+		if not self.pullEvent.is_set():
+				self.t.start()
 				
 	def createServer(self):
-		app = Bottle()
-		
-		@app.route('/notification/<data>', method = 'PUT')
-		def process(data):
-			print('server process')
-			self._processEvents(data)
-
-		run(app, host = 'localhost', port = 5725, debug = False)
+		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.s.bind(('localhost', 5725))
+		self.s.listen(10)
+		self.serverRun = True
+		 
+		while self.serverRun:
+			conn, addr = self.s.accept()		
+			data = conn.recv(1024)
+			dataSplit = data.split('{"registrations"');
+			dataJson = json.loads('{"registrations"' + dataSplit[1])
+			
+			reply = 'OK...' + data
+			if not data: 
+				break
+			conn.sendall(reply)
+			conn.close()
+			self._processEvents(dataJson)
+		self.s.close()
+			
+	def shutDownServer(self):
+		#deleteCallback()
+		self.serverRun = False
 				
 	def registerNotificationCallback(self):
 		data = {
