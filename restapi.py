@@ -2,7 +2,6 @@ import requests
 import json
 import threading
 import event_emitter
-from multiprocessing import Queue, Process
 import socket
 
 class Service(event_emitter.EventEmitter):
@@ -84,7 +83,6 @@ class Service(event_emitter.EventEmitter):
 			return response.status_code
 		
 	def _processEvents(self, data):
-		print(data)
 		for i in data['registrations']:
 			self.emit('register', i['name'])
 			
