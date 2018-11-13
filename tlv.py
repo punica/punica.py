@@ -17,10 +17,10 @@ RESOURCE_TYPE = {
 };
 
 def binaryToInteger(binaryData):
-	return int(binaryData.decode('hex_codec'), 16)          #return parseInt(binaryData.toString('hex'), 16);
+	return int(binaryData)         #return parseInt(binaryData.toString('hex'), 16);
 
 def binaryToBitString(binaryData):
-	return "{0:b}".format(binaryToInteger(binaryData));
+	return "{0:b}".format(binaryToInteger(binaryData[1]));		# ???
 
 
 def changeBufferSize(buff, start, end):
@@ -29,28 +29,27 @@ def changeBufferSize(buff, start, end):
 	if not end:
 		end = len(buff)
 
-	#if (!(buff instanceof Buffer)):
-	#	print('Given argument is not a buffer')
-	
+	if not isinstance(buff, bytearray):
+		raise ValueError('Given argument is not a buffer');
 
 	if (start < 0):
-		print('Wanted buffer start is negative number')
+		raise ValueError('Wanted buffer start is negative number')
 	
 
 	if (len(buff) < end):
-		print('Buffer length is smaller than wanted buffer end')
+		raise ValueError('Buffer length is smaller than wanted buffer end')
 	
 
 	if (start > end):
-		print('Wanted buffer start is larger number than end')
+		raise ValueError('Wanted buffer start is larger number than end')
 	
 
 	while (index < end):
-		bufferArray.push(buff[index])
+		bufferArray.append(buff[index])
 		index += 1
 	
 
-	return buffer(bufferArray)
+	return bytearray(bufferArray)
 
 
 def decode(buff):
@@ -59,23 +58,19 @@ def decode(buff):
 	index = 1
 	valueLength = 0
 
-	#if (!(buff instanceof Buffer)):
-	#	pass
-		# throw Error('Given argument is not a buffer');
+	if not isinstance(buff, bytearray):
+		raise ValueError('Given argument is not a buffer');
 
 
 	if (len(buff) < 2):
-		pass
-		# throw Error('Given buffer is too short to store tlv data');
+		raise ValueError('Given buffer is too short to store tlv data');
 
 	valueIdentifier = buff[index]
 	index += 1
-
 	i = index
 	if ((index + (buff[0] >> 5) & 0b1) > 0): # eslint-disable-line no-bitwise
 		if (buff[i] == None):
-			pass
-			# throw Error('Given buffer is corrupted (missing data)');
+			raise ValueError('Given buffer is corrupted (missing data)');
 		
 
 		valueIdentifier = (valueIdentifier << 8) + buff[i] # eslint-disable-line no-bitwise
@@ -87,8 +82,7 @@ def decode(buff):
 	if ((buff[0] >> 3) & 0b11 > 0): # eslint-disable-line no-bitwise
 		while (i < (index + ((buff[0] >> 3) & 0b11))): # eslint-disable-line no-bitwise
 			if (buff[i] == None):
-				pass
-				# throw Error('Given buffer is corrupted (missing data)');
+				raise ValueError('Given buffer is corrupted (missing data)');
 			
 
 			valueLength = (valueLength << 8) + buff[i] # eslint-disable-line no-bitwise
@@ -110,59 +104,57 @@ def decodeResourceValue(buff, resource):
 		if len(buff) == 0:
 			return 0;
 		elif len(buff) == 1:
-			return unpack('b', buff)			#return buff.readInt8();
+			return unpack('b', buff)[0]
 		elif len(buff) == 2:
-			return unpack('>h', buff)			#return buff.readInt16BE();
+			return unpack('>h', buff)[0]
 		elif len(buff) == 4:
-			return unpack('>i', buff)			#return buff.readInt32BE();
+			return unpack('>i', buff)[0]
 		else:
-			print('Incorrect integer value length' + len(buff)); #throw Error(`Incorrect integer value length (${buffer.length})`);
+			raise ValueError('Incorrect integer value length', len(buff));
 			
 
 	elif resource['type'] == RESOURCE_TYPE['FLOAT']:
 		if len(buff) == 4:
-			return unpack('>f', buff)							#return buffer.readFloatBE();
+			return unpack('>f', buff)[0]
 		elif len(buff) == 8:
-			return unpack('>d', buff)							#return buffer.readDoubleBE();
+			return unpack('>d', buff)[0]
 		else:
-			print('Incorrect float value length' + len(buff));	#throw Error(`Incorrect float value length (${buffer.length})`);
+			raise ValueError('Incorrect float value length', len(buff));
 			
 	elif resource['type'] == RESOURCE_TYPE['STRING']:
-		return buff.decode('ascii');								#toString
+		return buff.decode('ascii');								
 
-	elif resource['type'] == RESOURCE_TYPE['STRING']:
+	elif resource['type'] == RESOURCE_TYPE['BOOLEAN']:
 		return binaryToBitString(buff) != '0';
 
 	elif resource['type'] == RESOURCE_TYPE['OPAQUE']:
 		return buff;
 
 	else:
-		print('Unrecognised resource type' + resource['type']);			#  throw Error(`Unrecognised resource type (${resource.type})`);
+		raise ValueError('Unrecognised resource type', resource['type']);
 
 
 
 def decodeResource(buff, resource):
-	print('decodeResource:')
-	print(buff)
 	decodedResource = decode(buff)
-	resourceValue
+	resourceValue = None
 
-	if (resource.identifier != decodedResource.identifier):
-		print('Decoded resource TLV identifier and description identifiers do not match');
+	if (resource['identifier'] != decodedResource['identifier']):
+		raise ValueError('Decoded resource TLV identifier and description identifiers do not match');
 
 	if (decodedResource['type'] == TYPE['RESOURCE']):
 		resourceValue = decodeResourceValue(decodedResource['value'], resource);
 	elif (decodedResource['type'] == TYPE['MULTIPLE_RESOURCE']):
 		resourceValue = decodeMultipleResourceInstancesTLV(decodedResource['value'], resource)['value'];
 	else:
-		print('TLV type is not resource or multiple resource');
+		raise ValueError('TLV type is not resource or multiple resource');
 	
 
 	return {
-		'identifier': resource.identifier,
+		'identifier': resource['identifier'],
 		'type': resource['type'],
 		'value': resourceValue,
-		'tlvSize': decodedResource.tlvSize,
+		'tlvSize': decodedResource['tlvSize']
 	}
 
 
