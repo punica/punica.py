@@ -14,7 +14,7 @@ class Service(event_emitter.EventEmitter):
 			'username' : '',
 			'password' : '',
 			'interval' : 1.234,
-			'polling' : False,
+			'polling' : True,
 			'port' : 5725
 		}
 		self.authenticationToken = ''
