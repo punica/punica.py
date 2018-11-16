@@ -1,4 +1,5 @@
 from struct import *
+import binascii
 import numbers
 
 TYPE = {
@@ -18,10 +19,10 @@ RESOURCE_TYPE = {
 };
 
 def binaryToInteger(binaryData):
-	return int(binaryData)         														#return parseInt(binaryData.toString('hex'), 16);
+	return int(binascii.hexlify(binaryData), base = 16);
 
 def binaryToBitString(binaryData):
-	return "{0:b}".format(binaryToInteger(binaryData[1]));		# ???
+	return "{0:b}".format(binaryToInteger(binaryData));
 
 def changeBufferSize(buff, start, end):
 	bufferArray = []
@@ -68,32 +69,32 @@ def decode(buff):
 	valueIdentifier = buff[index]
 	index += 1
 	i = index
-	if ((index + (buff[0] >> 5) & 0b1) > 0): # eslint-disable-line no-bitwise
+	if ((index + (buff[0] >> 5) & 0b1) > 0):
 		if (buff[i] == None):
 			raise ValueError('Given buffer is corrupted (missing data)');
 		
 
-		valueIdentifier = (valueIdentifier << 8) + buff[i] # eslint-disable-line no-bitwise
+		valueIdentifier = (valueIdentifier << 8) + buff[i]
 		i += 1
 	
 
 	index = i
 
-	if ((buff[0] >> 3) & 0b11 > 0): # eslint-disable-line no-bitwise
-		while (i < (index + ((buff[0] >> 3) & 0b11))): # eslint-disable-line no-bitwise
+	if ((buff[0] >> 3) & 0b11 > 0):
+		while (i < (index + ((buff[0] >> 3) & 0b11))):
 			if (buff[i] == None):
 				raise ValueError('Given buffer is corrupted (missing data)');
 			
 
-			valueLength = (valueLength << 8) + buff[i] # eslint-disable-line no-bitwise
+			valueLength = (valueLength << 8) + buff[i]
 			i += 1
 		
 	else:
-		valueLength = buff[0] & 0b111 # eslint-disable-line no-bitwise
+		valueLength = buff[0] & 0b111
 	index = i
 
 	return {
-		'type': buff[0] >> 6, # eslint-disable-line no-bitwise
+		'type': buff[0] >> 6,
 		'identifier': valueIdentifier,
 		'value': changeBufferSize(buff, index, index + valueLength),
 		'tlvSize': index + valueLength
@@ -183,14 +184,11 @@ def encodeResourceValue(resource):
 			raise ValueError('Cannot encode ', type(resource['value']), ' as integer');
 	
 		if (resource['value'] >= MIN_INT8 and resource['value'] <= MAX_INT8):
-			buff = bytearray(1)												#buff = Buffer.alloc(1);
-			buff = pack('>b', resource['value']);			#buff.writeInt8(resource['value']);
+			buff = bytearray(pack('>b', resource['value']));
 		elif (resource['value'] >= MIN_INT16 and resource['value'] <= MAX_INT16):
-			buff = bytearray(2)
-			buff = pack('>h', resource['value']);
+			buff = bytearray(pack('>h', resource['value']));
 		elif (resource['value'] >= MIN_INT32 and resource['value'] <= MAX_INT32):
-			buff = bytearray(4)
-			buff = pack('>i', resource['value']);
+			buff = bytearray(pack('>i', resource['value']));
 		else:
 			## XXX: this could be implemented with long.js module,
 			## but until there's a real issue no need to add another dependency
@@ -203,8 +201,7 @@ def encodeResourceValue(resource):
 		if not isinstance(resource['value'], numbers.Number):
 			raise ValueError('Cannot encode ', type(resource['value']), ' as float');
 
-		buff = bytearray(4)
-		buff = pack('>f', resource['value']);
+		buff = bytearray(pack('>f', resource['value']));
 		return buff;
 
 	elif resource['type'] == RESOURCE_TYPE['BOOLEAN']:
