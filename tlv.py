@@ -23,6 +23,12 @@ def binaryToInteger(binaryData):
 
 def binaryToBitString(binaryData):
 	return "{0:b}".format(binaryToInteger(binaryData));
+	
+def getDictionaryByValue(dictionaryList, keyName, value):
+	for dictonary in dictionaryList:
+		if dictonary[keyName] == value:
+			return dictonary;
+	return None;
 
 def changeBufferSize(buff, start, end):
 	bufferArray = []
@@ -134,6 +140,25 @@ def decodeResourceValue(buff, resource):
 	else:
 		raise ValueError('Unrecognised resource type', resource['type']);
 
+def decodeMultipleResourceInstancesTLV(buff, resources):
+	decodedResourceValues = bytearray();
+	decodedResourceInstance = None;
+	index = 0;
+
+	while (index < len(buff)):
+		decodedResourceInstance = decodeResourceInstanceValue(
+			changeBufferSize(buff, index),
+			resources
+		);
+		decodedResourceValues += decodedResourceInstance['value'];
+		index += decodedResourceInstance['tlvSize'];
+	
+
+	return {
+		'identifier': resources['identifier'],
+		'type': resources['type'],
+		'value': decodedResourceValues,
+	};
 
 
 def decodeResource(buff, resource):
@@ -277,28 +302,28 @@ def encode(obj):
 	return bytearray([typeByte]) + identifierBuffer + lengthBuffer + obj['value'];
 
 def encodeResourceInstance(resourceInstance):
-  return encode({
-    'type': TYPE['RESOURCE_INSTANCE'],
-    'identifier': resourceInstance['identifier'],
-    'value': encodeResourceValue(resourceInstance),
-  });
+	return encode({
+		'type': TYPE['RESOURCE_INSTANCE'],
+		'identifier': resourceInstance['identifier'],
+		'value': encodeResourceValue(resourceInstance),
+	});
 
 
 def encodeMultipleResourcesTLV(resources):
-  resourceInstancesBuffers = bytearray();
+	resourceInstancesBuffers = bytearray();
 
-  for  index in range(len(resources['value'])):
-    resourceInstancesBuffers += encodeResourceInstance({
-      'type': resources['type'],
-      'identifier': index,
-      'value': resources['value'][index],
-    });
+	for  index in range(len(resources['value'])):
+		resourceInstancesBuffers += encodeResourceInstance({
+			'type': resources['type'],
+			'identifier': index,
+			'value': resources['value'][index],
+		});
 
-  return encode({
-    'type': TYPE['MULTIPLE_RESOURCE'],
-    'identifier': resources['identifier'],
-    'value': resourceInstancesBuffers,
-  });
+	return encode({
+		'type': TYPE['MULTIPLE_RESOURCE'],
+		'identifier': resources['identifier'],
+		'value': resourceInstancesBuffers,
+	});
 
 
 def encodeResource(resource):
@@ -311,4 +336,111 @@ def encodeResource(resource):
 		'identifier': resource['identifier'],
 		'value': encodeResourceValue(resource),
 	});
+
+def encodeObjectInstance(objectInstance):
+	resourcesBuffers = bytearray();
+
+	for  index in range(len(objectInstance['resources'])):
+		resourcesBuffers += encodeResource(objectInstance['resources'][index]);
+
+
+	return encode({
+		'type': TYPE['OBJECT_INSTANCE'],
+		'identifier': objectInstance['identifier'],
+		'value': resourcesBuffers,
+	});
+
+def encodeObject(obj):
+	objectInstancesBuffers = bytearray();
+
+	for  index in range(len(obj['objectInstances'])):
+		objectInstancesBuffers += encodeObjectInstance(obj['objectInstances'][index]);
+	
+
+	return objectInstancesBuffers;
+
+def decodeResourceInstance(buff, resources):
+	decodedResourceInstance = decode(buff);
+
+	if (decodedResourceInstance['type'] != TYPE['RESOURCE_INSTANCE']):
+		raise ValueError('Decoded resource TLV type is not resource instance');
+
+	return {
+		'type': resources['type'],
+		'identifier': decodedResourceInstance['identifier'],
+		'value': decodeResourceValue(decodedResourceInstance['value'], resources),
+		'tlvSize': decodedResourceInstance['tlvSize'],
+	};
+
+def decodeResourceInstanceValue(buff, resourceInstance):
+	decodedResourceInstance = decode(buff);
+
+	if (decodedResourceInstance['type'] != TYPE['RESOURCE_INSTANCE']):
+		raise ValueError('Decoded resource TLV type is not resource instance');
+
+
+	return {
+		'value': decodeResourceValue(decodedResourceInstance['value'], resourceInstance),
+		'tlvSize': decodedResourceInstance['tlvSize'],
+	};
+	
+def decodeObjectInstance(buff, objectInstance):
+	decodedObjectInstance = decode(buff);
+	decodedResources = [];
+	remainingBuffer = None;
+	resourceIdentifier = None;
+	resourceDescription = None;
+	decodedResource = None;
+	index = 0;
+
+	while (index < len(decodedObjectInstance['value'])):
+		remainingBuffer = changeBufferSize(decodedObjectInstance['value'], index, len(decodedObjectInstance['value']));
+		resourceIdentifier = decode(remainingBuffer)['identifier'];
+
+		resourceDescription = getDictionaryByValue(objectInstance['resources'], 'identifier', resourceIdentifier);
+
+		if (resourceDescription == None):
+			raise ValueError('No resource description found (x/',objectInstance['identifier'],'/',resourceIdentifier,')');
+
+
+		decodedResource = decodeResource(remainingBuffer, resourceDescription);
+		decodedResources.append(decodedResource);
+		index += decodedResource['tlvSize'];
+
+
+	return {
+		'identifier': objectInstance['identifier'],
+		'resources': decodedResources,
+	};
+
+def decodeObject(buff, obj):
+	decodedObjectInstances = [];
+	remainingBuffer = None;
+	objectInstanceIdentifier = None;
+	objectInstanceDescription = None;
+	decodedObjectInstance = None;
+	index = 0;
+
+	while (index < len(buff)):
+		remainingBuffer = changeBufferSize(buff, index, len(buff));
+		objectInstanceIdentifier = decode(remainingBuffer)['identifier'];
+
+		objectInstanceDescription = getDictionaryByValue(obj['objectInstances'], 'identifier', objectInstanceIdentifier);
+
+		if (objectInstanceDescription == None):
+			raise ValueError('No object instance description found (',obj['identifier'],'/',objectInstanceIdentifier,')');
+
+
+		decodedObjectInstance = decodeObjectInstance(remainingBuffer, objectInstanceDescription);
+		decodedObjectInstances.append(decodedObjectInstance);
+		break;
+
+
+	return {
+		'identifier': obj['identifier'],
+		'objectInstances': decodedObjectInstances,
+	};
+
+
+
 
