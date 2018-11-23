@@ -17,10 +17,21 @@ class Service(event_emitter.EventEmitter):
 			'polling' : True,
 			'port' : 5725
 		}
+		if not opts == None:
+			self.configure(opts)
 		self.authenticationToken = ''
 		self.tokenValidation = 3600
 
-	def start(self):
+	def configure(self, opts):
+		for opt in opts:
+			self.config[opt] = opts[opt];
+
+	def start(self, opts = None):
+		if not opts == None:
+			self.configure(opts)
+		if self.config['authentication']:
+			self.authenticationEvent = threading.Event()
+			self._startAuthenticate()
 		if self.config['polling']:
 			self.pullEvent = threading.Event()
 			self._pullAndProcess()
@@ -30,6 +41,8 @@ class Service(event_emitter.EventEmitter):
 			self.registerNotificationCallback()
 
 	def stop(self):
+		if self.config['authentication']:
+			self.authenticationEvent.set()
 		if self.config['polling']:
 			self.pullEvent.set()
 		else:
@@ -37,7 +50,10 @@ class Service(event_emitter.EventEmitter):
 		
 	def pullNotification(self):
 		response = self.get('/notification/pull')
-		return response.json()
+		if (response.status_code == 200):
+			return response.json()
+		else:
+			return response.status_code
 		
 	def _pullAndProcess(self):
 		self._processEvents(self.pullNotification())
@@ -45,6 +61,14 @@ class Service(event_emitter.EventEmitter):
 		if not self.pullEvent.is_set():
 				self.t.start()
 				
+	def _startAuthenticate(self):
+		data = self.authenticate()
+		self.authenticationToken = data['access_token']
+		self.tokenValidation = data['expires_in']
+		self.authenticateTimer = threading.Timer(0.9 * self.tokenValidation, self._startAuthenticate)
+		if not self.authenticationEvent.is_set():
+				self.authenticateTimer.start()
+
 	def createServer(self):
 		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.s.bind(('localhost', 5725))
@@ -64,6 +88,19 @@ class Service(event_emitter.EventEmitter):
 			conn.close()
 			self._processEvents(dataJson)
 		self.s.close()
+
+	def authenticate(self):
+	  data = {
+		'name': self.config['username'],
+		'secret': self.config['password']
+	  }
+	  dataType = 'application/json'
+	  response = self.post('/authenticate', data, dataType)
+	  if (response.status_code == 201):
+		data = response.json()
+		return data
+	  else:
+		return response.status_code
 			
 	def shutDownServer(self):
 		#deleteCallback()
@@ -74,13 +111,17 @@ class Service(event_emitter.EventEmitter):
 			'url': 'http://localhost:5725/notification',
 			'headers': {}
 		}
-		contentType = 'application/json';
+		contentType = 'application/json'
 		response = self.put('/notification/callback', data, contentType)
 		if (response.status_code == 204):
 			data = response.text
 			return data
 		else:
 			return response.status_code
+
+	def deleteNotificationCallback(self):
+		response = self.delete('/notification/callback')
+		return response.status_code
 		
 	def _processEvents(self, data):
 		for i in data['registrations']:
@@ -118,7 +159,7 @@ class Service(event_emitter.EventEmitter):
 			
 		if self.config['authentication']:
 			headers['Authorization'] = 'Bearer ' + self.authenticationToken
-      
+
 		url = self.config['host'] + path
 		if contentType == 'application/json':
 			r = requests.put(url, headers = headers, json = data)
@@ -137,7 +178,7 @@ class Service(event_emitter.EventEmitter):
 			
 		if self.config['authentication']:
 			headers['Authorization'] = 'Bearer ' + self.authenticationToken
-      
+
 		url = self.config['host'] + path
 		if contentType == 'application/json':
 			r = requests.post(url, headers = headers, json = data)
@@ -150,7 +191,7 @@ class Service(event_emitter.EventEmitter):
 
 		if self.config['authentication']:
 			headers['Authorization'] = 'Bearer ' + self.authenticationToken
-      
+
 		url = self.config['host'] + path
 		r = requests.delete(url, headers = headers)
 		return r
