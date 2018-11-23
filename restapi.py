@@ -47,20 +47,20 @@ class Service(event_emitter.EventEmitter):
 			self.pullEvent.set()
 		else:
 			self.shutDownServer()
-		
+
 	def pullNotification(self):
 		response = self.get('/notification/pull')
 		if (response.status_code == 200):
 			return response.json()
 		else:
 			return response.status_code
-		
+
 	def _pullAndProcess(self):
 		self._processEvents(self.pullNotification())
 		self.t = threading.Timer(self.config['interval'], self._pullAndProcess)
 		if not self.pullEvent.is_set():
 				self.t.start()
-				
+
 	def _startAuthenticate(self):
 		data = self.authenticate()
 		self.authenticationToken = data['access_token']
@@ -74,7 +74,7 @@ class Service(event_emitter.EventEmitter):
 		self.s.bind(('localhost', 5725))
 		self.s.listen(10)
 		self.serverRun = True
-		 
+
 		while self.serverRun:
 			conn, addr = self.s.accept()		
 			data = conn.recv(1024)
@@ -101,11 +101,11 @@ class Service(event_emitter.EventEmitter):
 		return data
 	  else:
 		return response.status_code
-			
+
 	def shutDownServer(self):
-		#deleteCallback()
+		deleteNotificationCallback()
 		self.serverRun = False
-				
+
 	def registerNotificationCallback(self):
 		data = {
 			'url': 'http://localhost:5725/notification',
@@ -122,17 +122,17 @@ class Service(event_emitter.EventEmitter):
 	def deleteNotificationCallback(self):
 		response = self.delete('/notification/callback')
 		return response.status_code
-		
+
 	def _processEvents(self, data):
 		for i in data['registrations']:
 			self.emit('register', i['name'])
-			
+
 		for i in data['reg-updates']:
 			self.emit('update', name = i['name'])
-			
+
 		for i in data['de-registrations']:
 			self.emit('deregister', i['name'])
-			
+
 		responses = sorted(data['async-responses'], key=lambda k: k['timestamp']) 
 		for i in range(0, len(responses)):
 			res = responses[i]
@@ -140,60 +140,82 @@ class Service(event_emitter.EventEmitter):
 
 
 	def get(self, path):
-		headers = {}
-			
-		if self.config['authentication']:
-			headers['Authorization'] = 'Bearer ' + self.authenticationToken
-
 		url = self.config['host'] + path
-		r = requests.get(url, headers = headers)
+		requestData = {
+			'url': url,
+			'headers': {},
+		}
+
+		if self.config['authentication']:
+			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+
+		if not self.config['ca'] == '':
+			requestData['verify'] = self.config['ca']
+
+		r = requests.get(**requestData)
 		return r
 
 	def put(self, path, argument = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
-		data = {}
-		headers = {}
+		url = self.config['host'] + path
+		requestData = {
+			'url': url,
+			'headers': {},
+		}
 
 		if argument != None:
-			headers['content-Type']  = contentType
-			data = argument
-			
-		if self.config['authentication']:
-			headers['Authorization'] = 'Bearer ' + self.authenticationToken
+			if contentType == 'application/json':
+				requestData['json'] = argument
+			else:
+				requestData['data'] = argument
+			requestData['headers']['content-Type']  = contentType
 
-		url = self.config['host'] + path
-		if contentType == 'application/json':
-			r = requests.put(url, headers = headers, json = data)
-		else:
-			r = requests.put(url, headers = headers, data = data)
+		if self.config['authentication']:
+			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+
+		if not self.config['ca'] == '':
+			requestData['verify'] = self.config['ca']
+
+		r = requests.put(**requestData)
 		return r
 		
 
 	def post(self, path, argument = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
-		data = {}
-		headers = {}
+		url = self.config['host'] + path
+		requestData = {
+			'url': url,
+			'headers': {},
+		}
 
 		if argument != None:
-			headers['content-Type']  = contentType
-			data = argument
-			
-		if self.config['authentication']:
-			headers['Authorization'] = 'Bearer ' + self.authenticationToken
+			if contentType == 'application/json':
+				requestData['json'] = argument
+			else:
+				requestData['data'] = argument
+			requestData['headers']['content-Type']  = contentType
 
-		url = self.config['host'] + path
-		if contentType == 'application/json':
-			r = requests.post(url, headers = headers, json = data)
-		else:
-			r = requests.post(url, headers = headers, data = data)
+		if self.config['authentication']:
+			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+
+		if not self.config['ca'] == '':
+			requestData['verify'] = self.config['ca']
+
+		r = requests.post(**requestData)
 		return r
 
 	def delete(self, path):
-		headers = {}
+		url = self.config['host'] + path
+		requestData = {
+			'url': url,
+			'headers': {},
+		}
 
 		if self.config['authentication']:
-			headers['Authorization'] = 'Bearer ' + self.authenticationToken
+			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
 
-		url = self.config['host'] + path
-		r = requests.delete(url, headers = headers)
+		if not self.config['ca'] == '':
+			requestData['verify'] = self.config['ca']
+
+		r = requests.delete(**requestData)
 		return r
 		
 		
