@@ -51,6 +51,26 @@ class Service(event_emitter.EventEmitter):
 		else:
 			self.shutDownServer()
 
+	def getDevices(self):
+		try:
+			response = self.get('/endpoints')
+			if (response.status_code == 200):
+				return response.json()
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
+	def getVersion(self):
+		try:
+			response = self.get('/version')
+			if (response.status_code == 200):
+				return response.text
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
 	def pullNotification(self):
 		try:
 			response = self.get('/notification/pull')
@@ -246,7 +266,7 @@ class Service(event_emitter.EventEmitter):
 			return r
 		except requests.ConnectionError, e:
 			raise e
-		
+
 class Device(event_emitter.EventEmitter):
 	def __init__(self, service, ID):
 		super(Device, self).__init__()
