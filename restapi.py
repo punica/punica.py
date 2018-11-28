@@ -27,18 +27,21 @@ class Service(event_emitter.EventEmitter):
 			self.config[opt] = opts[opt];
 
 	def start(self, opts = None):
-		if not opts == None:
-			self.configure(opts)
-		if self.config['authentication']:
-			self.authenticationEvent = threading.Event()
-			self._startAuthenticate()
-		if self.config['polling']:
-			self.pullEvent = threading.Event()
-			self._pullAndProcess()
-		else:
-			self.server = threading.Thread(target = self.createServer)
-			self.server.start()
-			self.registerNotificationCallback()
+		try:
+			if not opts == None:
+				self.configure(opts)
+			if self.config['authentication']:
+				self.authenticationEvent = threading.Event()
+				self._startAuthenticate()
+			if self.config['polling']:
+				self.pullEvent = threading.Event()
+				self._pullAndProcess()
+			else:
+				self.server = threading.Thread(target = self.createServer)
+				self.server.start()
+				self.registerNotificationCallback()
+		except Exception, e:
+			raise e;
 
 	def stop(self):
 		if self.config['authentication']:
@@ -49,25 +52,36 @@ class Service(event_emitter.EventEmitter):
 			self.shutDownServer()
 
 	def pullNotification(self):
-		response = self.get('/notification/pull')
-		if (response.status_code == 200):
-			return response.json()
-		else:
-			return response.status_code
+		try:
+			response = self.get('/notification/pull')
+			if (response.status_code == 200):
+				return response.json()
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
 
 	def _pullAndProcess(self):
-		self._processEvents(self.pullNotification())
-		self.t = threading.Timer(self.config['interval'], self._pullAndProcess)
-		if not self.pullEvent.is_set():
+		try:
+			self._processEvents(self.pullNotification())
+		except Exception, e:
+			print('Failed to pull notification: ', e)
+		finally:
+			self.t = threading.Timer(self.config['interval'], self._pullAndProcess)
+			if not self.pullEvent.is_set():
 				self.t.start()
 
 	def _startAuthenticate(self):
-		data = self.authenticate()
-		self.authenticationToken = data['access_token']
-		self.tokenValidation = data['expires_in']
-		self.authenticateTimer = threading.Timer(0.9 * self.tokenValidation, self._startAuthenticate)
-		if not self.authenticationEvent.is_set():
-				self.authenticateTimer.start()
+		try:
+			data = self.authenticate()
+			self.authenticationToken = data['access_token']
+			self.tokenValidation = data['expires_in']
+		except Exception, e:
+			print('Failed to authenticate user: ', e)
+		finally:
+			self.authenticateTimer = threading.Timer(0.9 * self.tokenValidation, self._startAuthenticate)
+			if not self.authenticationEvent.is_set():
+					self.authenticateTimer.start()
 
 	def createServer(self):
 		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -90,38 +104,47 @@ class Service(event_emitter.EventEmitter):
 		self.s.close()
 
 	def authenticate(self):
-	  data = {
-		'name': self.config['username'],
-		'secret': self.config['password']
-	  }
-	  dataType = 'application/json'
-	  response = self.post('/authenticate', data, dataType)
-	  if (response.status_code == 201):
-		data = response.json()
-		return data
-	  else:
-		return response.status_code
+		try:
+			data = {
+			'name': self.config['username'],
+			'secret': self.config['password']
+			}
+			dataType = 'application/json'
+			response = self.post('/authenticate', data, dataType)
+			if (response.status_code == 201):
+				data = response.json()
+				return data
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
 
 	def shutDownServer(self):
 		deleteNotificationCallback()
 		self.serverRun = False
 
 	def registerNotificationCallback(self):
-		data = {
-			'url': 'http://localhost:5725/notification',
-			'headers': {}
-		}
-		contentType = 'application/json'
-		response = self.put('/notification/callback', data, contentType)
-		if (response.status_code == 204):
-			data = response.text
-			return data
-		else:
-			return response.status_code
+		try:
+			data = {
+				'url': 'http://localhost:5725/notification',
+				'headers': {}
+			}
+			contentType = 'application/json'
+			response = self.put('/notification/callback', data, contentType)
+			if (response.status_code == 204):
+				data = response.text
+				return data
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
 
 	def deleteNotificationCallback(self):
-		response = self.delete('/notification/callback')
-		return response.status_code
+		try:
+			response = self.delete('/notification/callback')
+			return response.status_code
+		except Exception, e:
+			raise e;
 
 	def _processEvents(self, data):
 		for i in data['registrations']:
@@ -138,7 +161,6 @@ class Service(event_emitter.EventEmitter):
 			res = responses[i]
 			self.emit('async-response', response = res)
 
-
 	def get(self, path):
 		url = self.config['host'] + path
 		requestData = {
@@ -151,9 +173,11 @@ class Service(event_emitter.EventEmitter):
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
-
-		r = requests.get(**requestData)
-		return r
+		try:
+			r = requests.get(**requestData)
+			return r
+		except requests.ConnectionError, e:
+			raise e
 
 	def put(self, path, argument = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
 		url = self.config['host'] + path
@@ -174,10 +198,11 @@ class Service(event_emitter.EventEmitter):
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
-
-		r = requests.put(**requestData)
-		return r
-		
+		try:
+			r = requests.put(**requestData)
+			return r
+		except requests.ConnectionError, e:
+			raise e
 
 	def post(self, path, argument = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
 		url = self.config['host'] + path
@@ -198,9 +223,11 @@ class Service(event_emitter.EventEmitter):
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
-
-		r = requests.post(**requestData)
-		return r
+		try:
+			r = requests.post(**requestData)
+			return r
+		except requests.ConnectionError, e:
+			raise e
 
 	def delete(self, path):
 		url = self.config['host'] + path
@@ -214,10 +241,11 @@ class Service(event_emitter.EventEmitter):
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
-
-		r = requests.delete(**requestData)
-		return r
-		
+		try:
+			r = requests.delete(**requestData)
+			return r
+		except requests.ConnectionError, e:
+			raise e
 		
 class Device(event_emitter.EventEmitter):
 	def __init__(self, service, ID):
@@ -258,55 +286,73 @@ class Device(event_emitter.EventEmitter):
 		self.transactions[ID] = callback
 		
 	def getObjects(self):
-		response = self.service.get('/endpoints/'+self.ID)
-		if (response.status_code == 202):
-			data = response.json()
-			return data
-		else:
-			return response.status_code
-		
+		try:
+			response = self.service.get('/endpoints/'+self.ID)
+			if (response.status_code == 202):
+				data = response.json()
+				return data
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
 	def read(self, path, callback):
-		response = self.service.get('/endpoints/'+self.ID+path)
-		if (response.status_code == 202):
-			data = response.json()
-			ID = data['async-response-id']
-			self.addAsyncCallback(ID, callback)
-			return ID
-		else:
-			return response.status_code
-			
+		try:
+			response = self.service.get('/endpoints/'+self.ID+path)
+			if (response.status_code == 202):
+				data = response.json()
+				ID = data['async-response-id']
+				self.addAsyncCallback(ID, callback)
+				return ID
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
 	def write(self, path, callback, payload, contentType = 'application/vnd.oma.lwm2m+tlv'):
-		response = self.service.put('/endpoints/' + self.ID + path, payload, contentType)
-		if (response.status_code == 202):
-			data = response.json()
-			ID = data['async-response-id']
-			self.addAsyncCallback(ID, callback)
-			return ID
-		else:
-			return response.status_code
-			
+		try:
+			response = self.service.put('/endpoints/' + self.ID + path, payload, contentType)
+			if (response.status_code == 202):
+				data = response.json()
+				ID = data['async-response-id']
+				self.addAsyncCallback(ID, callback)
+				return ID
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
 	def execute(self, path, callback, payload, contentType = 'text/plain'):
-		response = self.service.post('/endpoints/' + self.ID + path, payload, contentType)
-		if (response.status_code == 202):
-			data = response.json()
-			ID = data['async-response-id']
-			self.addAsyncCallback(ID, callback)
-			return ID
-		else:
-			return response.status_code
-			
+		try:
+			response = self.service.post('/endpoints/' + self.ID + path, payload, contentType)
+			if (response.status_code == 202):
+				data = response.json()
+				ID = data['async-response-id']
+				self.addAsyncCallback(ID, callback)
+				return ID
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
 	def observe(self, path, callback):
-		response = self.service.put('/subscriptions/' + self.ID + path)
-		if (response.status_code == 202):
-			data = response.json()
-			ID = data['async-response-id']
-			self.observations[ID] = callback
-			return ID
-		else:
-			return response.status_code
-			
+		try:
+			response = self.service.put('/subscriptions/' + self.ID + path)
+			if (response.status_code == 202):
+				data = response.json()
+				ID = data['async-response-id']
+				self.observations[ID] = callback
+				return ID
+			else:
+				raise requests.HTTPError(response.status_code)
+		except Exception, e:
+			raise e;
+
 	def cancelObserve(self, path, callback):
-		response = self.service.delete('/subscriptions/' + self.ID + path)
-		return response.status_code
-		
+		try:
+			response = self.service.delete('/subscriptions/' + self.ID + path)
+			return response.status_code
+		except Exception, e:
+			raise e;
+
 
