@@ -1,5 +1,5 @@
-from restapi import Service
-from restapi import Device
+from punica_api import Service
+from punica_api import Device
 from tlv import *
 
 options = {
