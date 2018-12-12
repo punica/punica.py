@@ -1,2 +1,2 @@
-cd tests
-python -m unittest -v punica_test
+cd tests	
+coverage run punica_test.py

@@ -113,8 +113,7 @@ resp = {
   },
   #'notificationCallback': { url: `http://${ip.address()}:5728/notification`, headers: {} },
   'badNotificationCallback': { 'url': 'http://1.1.1.1:7777/notification', 'headers': {} },
-  'deleteCallback': bytearray(),
-  'registerCallback': bytearray(),
+  'registerCallback': '',
   'getEndpoints': [{
     'name': 'threeSeven',
     'type': '8dev_3700',

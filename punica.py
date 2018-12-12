@@ -65,7 +65,7 @@ class Service(event_emitter.EventEmitter):
 		try:
 			response = self.get('/version')
 			if (response.status_code == 200):
-				return response.text
+				return response.json()
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
@@ -152,7 +152,7 @@ class Service(event_emitter.EventEmitter):
 			contentType = 'application/json'
 			response = self.put('/notification/callback', data, contentType)
 			if (response.status_code == 204):
-				data = response.text
+				data = response.json()
 				return data
 			else:
 				raise requests.HTTPError(response.status_code)

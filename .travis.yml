@@ -1,5 +1,13 @@
 language: python
 python:
  - "2.7"
-sh test.sh
+install:
+ - pip install codecov
+script:
+ - sh install_modules.sh
+ - sh test.sh
+after_success:
+ - coverage combine
+ - codecov
+
 
