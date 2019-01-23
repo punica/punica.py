@@ -99,13 +99,13 @@ class TestServiceMethods(unittest.TestCase):
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '400'):
 			response = service.authenticate()
-
+	'''
 	def test_authenticate_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
 			response = service.authenticate()
-
-	#----------------------registerNotificationCallback-----------------
+	'''
+	#------------------registerNotificationCallback---------------------
 	@responses.activate
 	def test_register_notification_callback_return(self):
 		responses.add(responses.PUT, url + '/notification/callback',
@@ -154,7 +154,26 @@ class TestServiceMethods(unittest.TestCase):
 		response = service.get('/endpoints/' + deviceName + path)
 		self.assertTrue('async-response-id' in response.json().keys())
 
-	def test_put_connection_failed(self):
+	@responses.activate
+	def test_get_after_authentication(self):
+		responses.add(responses.POST, url + '/authenticate',
+			json= resp['authentication'], status=201)
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			json= resp['readRequest'], status=202)
+		responses.add(responses.GET, url + '/notification/pull',
+			json= resp['notifications'], status=200)
+		opts = {
+		 'authentication' : True,
+		 'username': 'admin',
+		 'password': 'not-same-as-name',
+		 'interval': 123456
+		}
+		service.start(opts)
+		response = service.get('/endpoints/' + deviceName + path)
+		self.assertTrue(responses.calls[1].request.headers['Authorization'].find(resp['authentication']['access_token']) != -1)
+		service.stop()
+
+	def test_get_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
 			response = service.get('/endpoints/' + deviceName + path)
@@ -169,16 +188,26 @@ class TestServiceMethods(unittest.TestCase):
 		response = service.put('/endpoints/' + deviceName + path, tlvBuffer)
 		self.assertTrue('async-response-id' in response.json().keys())
 
-	'''
-	@responses.activate
-	def test_put_with_authentication(self):
-		responses.add(responses.PUT, url + '/notification/callback',
-			json= resp['writeRequest'], status=204)
 
-		response= None
-		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = service.registerNotificationCallback()
-	'''
+	@responses.activate
+	def test_put_after_authentication(self):
+		responses.add(responses.POST, url + '/authenticate',
+			json= resp['authentication'], status=201)
+		responses.add(responses.PUT, url + '/endpoints/' + deviceName + path,
+			json= resp['writeRequest'], status=202)
+		responses.add(responses.GET, url + '/notification/pull',
+			json= resp['notifications'], status=200)
+		opts = {
+		 'authentication' : True,
+		 'username': 'admin',
+		 'password': 'not-same-as-name',
+		 'interval': 123456
+		}
+		service.start(opts)
+		response = service.put('/endpoints/' + deviceName + path, tlvBuffer)
+		self.assertTrue(responses.calls[1].request.headers['Authorization'].find(resp['authentication']['access_token']) != -1)
+		service.stop()
+
 
 	def test_put_connection_failed(self):
 		response= None
@@ -195,6 +224,25 @@ class TestServiceMethods(unittest.TestCase):
 		response = service.post('/endpoints/' + deviceName + path)
 		self.assertTrue('async-response-id' in response.json().keys())
 
+	@responses.activate
+	def test_post_after_authentication(self):
+		responses.add(responses.POST, url + '/authenticate',
+			json= resp['authentication'], status=201)
+		responses.add(responses.POST, url + '/endpoints/' + deviceName + path,
+			json= resp['executeRequest'], status=202)
+		responses.add(responses.GET, url + '/notification/pull',
+			json= resp['notifications'], status=200)
+		opts = {
+		 'authentication' : True,
+		 'username': 'admin',
+		 'password': 'not-same-as-name',
+		 'interval': 123456
+		}
+		service.start(opts)
+		response = service.post('/endpoints/' + deviceName + path)
+		self.assertTrue(responses.calls[1].request.headers['Authorization'].find(resp['authentication']['access_token']) != -1)
+		service.stop()
+
 	def test_delete_post_failed(self):
 		response= None
 		with self.assertRaises(Exception):
@@ -203,11 +251,30 @@ class TestServiceMethods(unittest.TestCase):
 	#------------------------delete------------------------
 	@responses.activate
 	def test_delete_return(self):
-		responses.add(responses.POST, url + '/notification/callback',
+		responses.add(responses.DELETE, url + '/notification/callback',
 			status=204)
 
-		response = service.post('/notification/callback')
+		response = service.delete('/notification/callback')
 		self.assertTrue(response.status_code == 204)
+
+	@responses.activate
+	def test_delete_after_authentication(self):
+		responses.add(responses.POST, url + '/authenticate',
+			json= resp['authentication'], status=201)
+		responses.add(responses.DELETE, url + '/endpoints/' + deviceName + path,
+			 status=202)
+		responses.add(responses.GET, url + '/notification/pull',
+			json= resp['notifications'], status=200)
+		opts = {
+		 'authentication' : True,
+		 'username': 'admin',
+		 'password': 'not-same-as-name',
+		 'interval': 123456
+		}
+		service.start(opts)
+		response = service.delete('/endpoints/' + deviceName + path)
+		self.assertTrue(responses.calls[1].request.headers['Authorization'].find(resp['authentication']['access_token']) != -1)
+		service.stop()
 
 	def test_delete_connection_failed(self):
 		response= None
