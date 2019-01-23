@@ -46,8 +46,10 @@ class Service(event_emitter.EventEmitter):
 	def stop(self):
 		if self.config['authentication']:
 			self.authenticationEvent.set()
+			self.authenticateTimer.cancel()
 		if self.config['polling']:
 			self.pullEvent.set()
+			self.pullTimer.cancel()
 		else:
 			self.shutDownServer()
 
@@ -87,9 +89,9 @@ class Service(event_emitter.EventEmitter):
 		except Exception, e:
 			print('Failed to pull notification: ', e)
 		finally:
-			self.t = threading.Timer(self.config['interval'], self._pullAndProcess)
+			self.pullTimer = threading.Timer(self.config['interval'], self._pullAndProcess)
 			if not self.pullEvent.is_set():
-				self.t.start()
+				self.pullTimer.start()
 
 	def _startAuthenticate(self):
 		try:
