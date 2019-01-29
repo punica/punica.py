@@ -13,6 +13,7 @@ url = 'http://localhost:8888'
 deviceName = 'threeSeven'
 path = '/3312/0/5850'
 tlvBuffer = bytearray([0xe4, 0x16, 0x44, 0x00, 0x00, 0x00, 0x01])
+device = Device(service, deviceName)
 
 class TestServiceMethods(unittest.TestCase):
 	#-----------------------pullNotification----------------------------
@@ -99,12 +100,12 @@ class TestServiceMethods(unittest.TestCase):
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '400'):
 			response = service.authenticate()
-	'''
+
 	def test_authenticate_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
 			response = service.authenticate()
-	'''
+
 	#------------------registerNotificationCallback---------------------
 	@responses.activate
 	def test_register_notification_callback_return(self):
@@ -281,6 +282,155 @@ class TestServiceMethods(unittest.TestCase):
 		with self.assertRaises(Exception):
 			response = service.delete('/notification/callback')
 
+
+class TestDeviceMethods(unittest.TestCase):
+	#--------------------------getObjects-------------------------------
+	@responses.activate
+	def test_get_objects_return(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName,
+			json= resp['sensorObjects'], status=202)
+
+
+		response = device.getObjects()
+		self.assertTrue('uri' in response[0].keys())
+
+	@responses.activate
+	def test_get_objects_wrong_status(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName,
+			status=404)
+
+		response= None
+		with self.assertRaisesRegexp(requests.HTTPError, '404'):
+			response = device.getObjects()
+
+	def test_get_objects_connection_failed(self):
+		response= None
+		with self.assertRaises(Exception):
+			response = device.getObjects()
+			
+	#--------------------------read-------------------------------
+	@responses.activate
+	def test_read_return_async_id(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			json= resp['readRequest'], status=202)
+
+		idRegex = '/^\d+#[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$/g'
+		response = device.read(path)
+		print(response)
+		self.assertRegexpMatches(response, idRegex)
+		
+	@responses.activate
+	def test_read_callback_data(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			json= resp['readRequest'], status=202)
+
+		def callback(status, data):
+			self.assertTrue(data)
+			
+		response = device.read(path)
+		service._processEvents(resp['responsesOfAllOperations'])
+		
+	@responses.activate
+	def test_read_wrong_status(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			status=404)
+
+		response= None
+		with self.assertRaisesRegexp(requests.HTTPError, '404'):
+			response = device.read(path)
+
+	def test_read_connection_failed(self):
+		response= None
+		with self.assertRaises(Exception):
+			response = device.read(path)
+			
+	#--------------------------write-------------------------------
+	@responses.activate
+	def test_write_return(self):
+		responses.add(responses.PUT, url + '/endpoints/' + deviceName + path,
+			json= resp['writeRequest'], status=202)
+
+
+		response = device.write(path)
+		self.assertTrue('async-response-id' in response.json().keys())
+
+	@responses.activate
+	def test_write_wrong_status(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			status=404)
+
+		response= None
+		with self.assertRaisesRegexp(requests.HTTPError, '404'):
+			response = device.write(path)
+
+	def test_write_connection_failed(self):
+		response= None
+		with self.assertRaises(Exception):
+			response = device.write(path)
+			
+	#--------------------------execute-------------------------------
+	@responses.activate
+	def test_execute_return(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			json= resp['executeRequest'], status=202)
+
+
+		response = device.getObjects()
+		self.assertTrue('uri' in response[0].keys())
+
+	@responses.activate
+	def test_execute_wrong_status(self):
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			status=404)
+
+		response= None
+		with self.assertRaisesRegexp(requests.HTTPError, '404'):
+			response = device.getObjects()
+
+	def test_execute_connection_failed(self):
+		response= None
+		with self.assertRaises(Exception):
+			response = device.getObjects()
+			
+	#----------------------------observe--------------------------------
+	@responses.activate
+	def test_observe_return(self):
+		responses.add(responses.PUT, url + '/subscriptions/' + deviceName + path,
+			json= resp['observeRequest'], status=202)
+
+
+		response = device.getObjects()
+		self.assertTrue('uri' in response[0].keys())
+
+	@responses.activate
+	def test_observe_wrong_status(self):
+		responses.add(responses.PUT, url + '/subscriptions/' + deviceName + path,
+			status=404)
+
+		response= None
+		with self.assertRaisesRegexp(requests.HTTPError, '404'):
+			response = device.getObjects()
+
+	def test_observe_connection_failed(self):
+		response= None
+		with self.assertRaises(Exception):
+			response = device.observe()
+
+	#--------------------------cancelObserve-------------------------------
+	@responses.activate
+	def test_cancel_observe_return(self):
+		responses.add(responses.DELETE, url + '/subscriptions/' + deviceName + path,
+			status=204)
+
+
+		response = device.cancelObserve()
+		self.assertTrue(response == 204)
+
+
+	def test_cancel_observe_connection_failed(self):
+		response= None
+		with self.assertRaises(Exception):
+			response = device.cancelObserve()
 
 if __name__ == '__main__':
 	unittest.main()
