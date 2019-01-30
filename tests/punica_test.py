@@ -397,9 +397,8 @@ class TestDeviceMethods(unittest.TestCase):
 
 		def callback(*args):
 			self.assertTrue(isinstance(args[0], int))
-			self.assertTrue(isinstance(args[1], str))
 
-		response = device.execute(path)
+		response = device.execute(path, None, callback)
 		service._processEvents(resp['responsesOfAllOperations'])
 
 	@responses.activate
@@ -435,7 +434,7 @@ class TestDeviceMethods(unittest.TestCase):
 			self.assertTrue(isinstance(args[0], int))
 			self.assertTrue(isinstance(args[1], str))
 
-		response = device.observe(path)
+		response = device.observe(path, callback)
 		service._processEvents(resp['responsesOfAllOperations'])
 
 	@responses.activate
