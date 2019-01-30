@@ -307,29 +307,29 @@ class TestDeviceMethods(unittest.TestCase):
 		response= None
 		with self.assertRaises(Exception):
 			response = device.getObjects()
-			
+
 	#--------------------------read-------------------------------
 	@responses.activate
 	def test_read_return_async_id(self):
 		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
 			json= resp['readRequest'], status=202)
 
-		idRegex = '/^\d+#[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$/g'
+		idRegex = '^\d+#[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$'
 		response = device.read(path)
-		print(response)
 		self.assertRegexpMatches(response, idRegex)
-		
+
 	@responses.activate
 	def test_read_callback_data(self):
 		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
 			json= resp['readRequest'], status=202)
 
-		def callback(status, data):
-			self.assertTrue(data)
-			
-		response = device.read(path)
+		def callback(*args):
+			self.assertTrue(isinstance(args[0], int))
+			self.assertTrue(isinstance(args[1], str))
+
+		response = device.read(path, callback)
 		service._processEvents(resp['responsesOfAllOperations'])
-		
+
 	@responses.activate
 	def test_read_wrong_status(self):
 		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
@@ -343,7 +343,7 @@ class TestDeviceMethods(unittest.TestCase):
 		response= None
 		with self.assertRaises(Exception):
 			response = device.read(path)
-			
+
 	#--------------------------write-------------------------------
 	@responses.activate
 	def test_write_return(self):
@@ -351,56 +351,92 @@ class TestDeviceMethods(unittest.TestCase):
 			json= resp['writeRequest'], status=202)
 
 
-		response = device.write(path)
-		self.assertTrue('async-response-id' in response.json().keys())
+		idRegex = '^\d+#[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$'
+		response = device.write(path, tlvBuffer)
+		self.assertRegexpMatches(response, idRegex)
+
+	@responses.activate
+	def test_write_callback_data(self):
+		responses.add(responses.PUT, url + '/endpoints/' + deviceName + path,
+			json= resp['writeRequest'], status=202)
+
+		def callback(*args):
+			self.assertTrue(isinstance(args[0], int))
+
+		response = device.write(path, tlvBuffer, callback)
+		service._processEvents(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_write_wrong_status(self):
-		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+		responses.add(responses.PUT, url + '/endpoints/' + deviceName + path,
 			status=404)
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = device.write(path)
+			response = device.write(path, tlvBuffer)
 
 	def test_write_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = device.write(path)
-			
-	#--------------------------execute-------------------------------
+			response = device.write(path, tlvBuffer)
+
+	#----------------------------execute--------------------------------
 	@responses.activate
 	def test_execute_return(self):
-		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+		responses.add(responses.POST, url + '/endpoints/' + deviceName + path,
 			json= resp['executeRequest'], status=202)
 
+		idRegex = '^\d+#[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$'
+		response = device.execute(path)
+		self.assertRegexpMatches(response, idRegex)
 
-		response = device.getObjects()
-		self.assertTrue('uri' in response[0].keys())
+	@responses.activate
+	def test_execute_callback_data(self):
+		responses.add(responses.POST, url + '/endpoints/' + deviceName + path,
+			json= resp['executeRequest'], status=202)
+
+		def callback(*args):
+			self.assertTrue(isinstance(args[0], int))
+			self.assertTrue(isinstance(args[1], str))
+
+		response = device.execute(path)
+		service._processEvents(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_execute_wrong_status(self):
-		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+		responses.add(responses.POST, url + '/endpoints/' + deviceName + path,
 			status=404)
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = device.getObjects()
+			response = device.execute(path)
 
 	def test_execute_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = device.getObjects()
-			
+			response = device.execute(path)
+
 	#----------------------------observe--------------------------------
 	@responses.activate
 	def test_observe_return(self):
 		responses.add(responses.PUT, url + '/subscriptions/' + deviceName + path,
 			json= resp['observeRequest'], status=202)
 
+		idRegex = '^\d+#[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$'
+		response = device.observe(path)
+		self.assertRegexpMatches(response, idRegex)
 
-		response = device.getObjects()
-		self.assertTrue('uri' in response[0].keys())
+	@responses.activate
+	def test_observe_callback_data(self):
+		responses.add(responses.PUT, url + '/subscriptions/' + deviceName + path,
+			json= resp['observeRequest'], status=202)
+
+		def callback(*args):
+			self.assertTrue(isinstance(args[0], int))
+			self.assertTrue(isinstance(args[1], str))
+
+		response = device.observe(path)
+		service._processEvents(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_observe_wrong_status(self):
@@ -409,12 +445,12 @@ class TestDeviceMethods(unittest.TestCase):
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = device.getObjects()
+			response = device.observe(path)
 
 	def test_observe_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = device.observe()
+			response = device.observe(path)
 
 	#--------------------------cancelObserve-------------------------------
 	@responses.activate
@@ -423,14 +459,14 @@ class TestDeviceMethods(unittest.TestCase):
 			status=204)
 
 
-		response = device.cancelObserve()
+		response = device.cancelObserve(path)
 		self.assertTrue(response == 204)
 
 
 	def test_cancel_observe_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = device.cancelObserve()
+			response = device.cancelObserve(path)
 
 if __name__ == '__main__':
 	unittest.main()

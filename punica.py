@@ -294,13 +294,13 @@ class Device(event_emitter.EventEmitter):
 		self.service.on('deregister', deregister)
 		
 		def asyncResponseHandle(response):
-			ID = response['id'];
-			code = response['status'];
-			data = response['payload'];
-			if ID in self.transactions:
+			ID = response.get('id');
+			code = response.get('status');
+			data = response.get('payload');
+			if not self.transactions.get(ID) == None:
 				self.transactions[ID](code, data)
 				del self.transactions[ID]
-			if ID in self.observations:
+			if not self.observations.get(ID) == None:
 				self.observations[ID](code, data)
 		self.service.on('async-response', asyncResponseHandle)
 		
@@ -318,7 +318,7 @@ class Device(event_emitter.EventEmitter):
 		except Exception, e:
 			raise e;
 
-	def read(self, path, callback):
+	def read(self, path, callback = None):
 		try:
 			response = self.service.get('/endpoints/'+self.ID+path)
 			if (response.status_code == 202):
@@ -331,7 +331,7 @@ class Device(event_emitter.EventEmitter):
 		except Exception, e:
 			raise e;
 
-	def write(self, path, callback, payload, contentType = 'application/vnd.oma.lwm2m+tlv'):
+	def write(self, path, payload, callback = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
 		try:
 			response = self.service.put('/endpoints/' + self.ID + path, payload, contentType)
 			if (response.status_code == 202):
@@ -344,7 +344,7 @@ class Device(event_emitter.EventEmitter):
 		except Exception, e:
 			raise e;
 
-	def execute(self, path, callback, payload, contentType = 'text/plain'):
+	def execute(self, path, payload = None, callback = None, contentType = 'text/plain'):
 		try:
 			response = self.service.post('/endpoints/' + self.ID + path, payload, contentType)
 			if (response.status_code == 202):
@@ -357,7 +357,7 @@ class Device(event_emitter.EventEmitter):
 		except Exception, e:
 			raise e;
 
-	def observe(self, path, callback):
+	def observe(self, path, callback = None):
 		try:
 			response = self.service.put('/subscriptions/' + self.ID + path)
 			if (response.status_code == 202):
