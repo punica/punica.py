@@ -16,6 +16,37 @@ tlvBuffer = bytearray([0xe4, 0x16, 0x44, 0x00, 0x00, 0x00, 0x01])
 device = Device(service, deviceName)
 
 class TestServiceMethods(unittest.TestCase):
+	#---------------------------start-----------------------------------
+	@responses.activate
+	def test_start_notification_callback(self):
+		responses.add(responses.PUT, url + '/notification/callback',
+			json= resp['registerCallback'], status=204)
+		responses.add(responses.DELETE, url + '/notification/callback',
+			status=204)
+		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
+			json= resp['readRequest'], status=202)
+		service.start({ 'polling': False, 'authentication': False });
+		def callback(*args):
+			self.assertTrue(isinstance(args[0], int))
+			self.assertTrue(isinstance(args[1], str))
+		
+		
+		response = device.read(path, callback)
+		args = {
+			'url': 'http://localhost:5725/notification',
+			'headers': { 'Content-Type': 'application/json' },
+			'data': resp['readResponse']
+		}
+		print('BUS PUT')
+		requests.put(**args)
+
+			
+	@responses.activate
+	def test_start_pull(self):
+		responses.add(responses.GET, url + '/notification/pull',
+			json= resp['oneAsyncResponse'], status=200)
+	#---------------------------stop------------------------------------
+
 	#-----------------------pullNotification----------------------------
 	@responses.activate
 	def test_pull_notification_return(self):
@@ -113,8 +144,7 @@ class TestServiceMethods(unittest.TestCase):
 			json= resp['registerCallback'], status=204)
 
 		response = service.registerNotificationCallback();
-		self.assertTrue(isinstance(response, object))
-		self.assertTrue(len(response) == 0)
+		self.assertTrue(response)
 
 	@responses.activate
 	def test_register_notification_callback_wrong_status(self):
@@ -363,7 +393,7 @@ class TestDeviceMethods(unittest.TestCase):
 		def callback(*args):
 			self.assertTrue(isinstance(args[0], int))
 
-		response = device.write(path, tlvBuffer, callback)
+		response = device.write(path, callback, tlvBuffer)
 		service._processEvents(resp['responsesOfAllOperations'])
 
 	@responses.activate
