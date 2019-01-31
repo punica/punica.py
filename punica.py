@@ -4,18 +4,19 @@ import threading
 import event_emitter
 import socket
 
+
 class Service(event_emitter.EventEmitter):
-	def __init__(self, opts = None):
+	def __init__(self, opts=None):
 		super(Service, self).__init__()
 		self.config = {
-			'host' : 'http://localhost:8888',
-			'ca' : '',
-			'authentication' : False,
-			'username' : '',
-			'password' : '',
-			'interval' : 1.234,
-			'polling' : True,
-			'port' : 5725
+			'host': 'http://localhost:8888',
+			'ca': '',
+			'authentication': False,
+			'username': '',
+			'password': '',
+			'interval': 1.234,
+			'polling': True,
+			'port': 5725
 		}
 		if not opts == None:
 			self.configure(opts)
@@ -24,9 +25,9 @@ class Service(event_emitter.EventEmitter):
 
 	def configure(self, opts):
 		for opt in opts:
-			self.config[opt] = opts[opt];
+			self.config[opt] = opts[opt]
 
-	def start(self, opts = None):
+	def start(self, opts=None):
 		try:
 			if not opts == None:
 				self.configure(opts)
@@ -37,11 +38,11 @@ class Service(event_emitter.EventEmitter):
 				self.pullEvent = threading.Event()
 				self._pullAndProcess()
 			else:
-				self.server = threading.Thread(target = self.createServer)
+				self.server = threading.Thread(target=self.createServer)
 				self.server.start()
 				self.registerNotificationCallback()
 		except Exception, e:
-			raise e;
+			raise e
 
 	def stop(self):
 		if self.config['authentication']:
@@ -61,7 +62,7 @@ class Service(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
 	def getVersion(self):
 		try:
@@ -71,7 +72,7 @@ class Service(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
 	def pullNotification(self):
 		try:
@@ -81,7 +82,7 @@ class Service(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
 	def _pullAndProcess(self):
 		try:
@@ -89,7 +90,8 @@ class Service(event_emitter.EventEmitter):
 		except Exception, e:
 			print('Failed to pull notification: ', e)
 		finally:
-			self.pullTimer = threading.Timer(self.config['interval'], self._pullAndProcess)
+			self.pullTimer = threading.Timer(
+				self.config['interval'], self._pullAndProcess)
 			if not self.pullEvent.is_set():
 				self.pullTimer.start()
 
@@ -101,35 +103,40 @@ class Service(event_emitter.EventEmitter):
 		except Exception, e:
 			print('Failed to authenticate user: ', e)
 		finally:
-			self.authenticateTimer = threading.Timer(0.9 * self.tokenValidation, self._startAuthenticate)
+			self.authenticateTimer = threading.Timer(
+				0.9 * self.tokenValidation, self._startAuthenticate)
 			if not self.authenticationEvent.is_set():
-					self.authenticateTimer.start()
+				self.authenticateTimer.start()
 
 	def createServer(self):
 		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.s.bind(('localhost', 5725))
 		self.s.listen(10)
+		self.s.settimeout(10)
 		self.serverRun = True
-
 		while self.serverRun:
-			conn, addr = self.s.accept()		
+			conn, addr = self.s.accept()
 			data = conn.recv(1024)
-			dataSplit = data.split('{"registrations"');
-			dataJson = json.loads('{"registrations"' + dataSplit[1])
-			
+			(headers, js) = data.split("\r\n\r\n")
+			if js:
+				dataJson = json.loads(js)
 			reply = 'OK...' + data
-			if not data: 
+
+			if not data:
 				break
 			conn.sendall(reply)
 			conn.close()
-			self._processEvents(dataJson)
+			if dataJson:
+				processEventsThread = threading.Thread(target=self._processEvents, args=(dataJson,))
+				processEventsThread.start()
 		self.s.close()
 
 	def authenticate(self):
 		try:
 			data = {
-			'name': self.config['username'],
-			'secret': self.config['password']
+				'name': self.config['username'],
+				'secret': self.config['password']
 			}
 			dataType = 'application/json'
 			response = self.post('/authenticate', data, dataType)
@@ -139,11 +146,11 @@ class Service(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
 	def shutDownServer(self):
-		deleteNotificationCallback()
 		self.serverRun = False
+		self.deleteNotificationCallback()
 
 	def registerNotificationCallback(self):
 		try:
@@ -154,34 +161,34 @@ class Service(event_emitter.EventEmitter):
 			contentType = 'application/json'
 			response = self.put('/notification/callback', data, contentType)
 			if (response.status_code == 204):
-				data = response.json()
-				return data
+				return response.status_code
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
 	def deleteNotificationCallback(self):
 		try:
 			response = self.delete('/notification/callback')
 			return response.status_code
 		except Exception, e:
-			raise e;
+			raise e
 
 	def _processEvents(self, data):
 		for i in data['registrations']:
 			self.emit('register', i['name'])
 
 		for i in data['reg-updates']:
-			self.emit('update', name = i['name'])
+			self.emit('update', name=i['name'])
 
 		for i in data['de-registrations']:
 			self.emit('deregister', i['name'])
 
-		responses = sorted(data['async-responses'], key=lambda k: k['timestamp']) 
+		responses = sorted(data['async-responses'],
+						   key=lambda k: k['timestamp'])
 		for i in range(0, len(responses)):
 			res = responses[i]
-			self.emit('async-response', response = res)
+			self.emit('async-response', response=res)
 
 	def get(self, path):
 		url = self.config['host'] + path
@@ -191,7 +198,8 @@ class Service(event_emitter.EventEmitter):
 		}
 
 		if self.config['authentication']:
-			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+			requestData['headers']['Authorization'] = 'Bearer ' + \
+				self.authenticationToken
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
@@ -201,7 +209,7 @@ class Service(event_emitter.EventEmitter):
 		except requests.ConnectionError, e:
 			raise e
 
-	def put(self, path, argument = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
+	def put(self, path, argument=None, contentType='application/vnd.oma.lwm2m+tlv'):
 		url = self.config['host'] + path
 		requestData = {
 			'url': url,
@@ -213,10 +221,11 @@ class Service(event_emitter.EventEmitter):
 				requestData['json'] = argument
 			else:
 				requestData['data'] = argument
-			requestData['headers']['content-Type']  = contentType
+			requestData['headers']['content-Type'] = contentType
 
 		if self.config['authentication']:
-			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+			requestData['headers']['Authorization'] = 'Bearer ' + \
+				self.authenticationToken
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
@@ -226,7 +235,7 @@ class Service(event_emitter.EventEmitter):
 		except requests.ConnectionError, e:
 			raise e
 
-	def post(self, path, argument = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
+	def post(self, path, argument=None, contentType='application/vnd.oma.lwm2m+tlv'):
 		url = self.config['host'] + path
 		requestData = {
 			'url': url,
@@ -238,10 +247,11 @@ class Service(event_emitter.EventEmitter):
 				requestData['json'] = argument
 			else:
 				requestData['data'] = argument
-			requestData['headers']['content-Type']  = contentType
+			requestData['headers']['content-Type'] = contentType
 
 		if self.config['authentication']:
-			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+			requestData['headers']['Authorization'] = 'Bearer ' + \
+				self.authenticationToken
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
@@ -259,7 +269,8 @@ class Service(event_emitter.EventEmitter):
 		}
 
 		if self.config['authentication']:
-			requestData['headers']['Authorization'] = 'Bearer ' + self.authenticationToken
+			requestData['headers']['Authorization'] = 'Bearer ' + \
+				self.authenticationToken
 
 		if not self.config['ca'] == '':
 			requestData['verify'] = self.config['ca']
@@ -269,44 +280,45 @@ class Service(event_emitter.EventEmitter):
 		except requests.ConnectionError, e:
 			raise e
 
+
 class Device(event_emitter.EventEmitter):
 	def __init__(self, service, ID):
 		super(Device, self).__init__()
-		
-		self.service = service;
-		self.ID = ID;
-		self.transactions = {};
-		self.observations = {};
-		
+
+		self.service = service
+		self.ID = ID
+		self.transactions = {}
+		self.observations = {}
+
 		def register(name):
 			if (self.ID == name):
 				self.emit('register')
 		self.service.on('register', register)
-				
+
 		def update(name):
 			if (self.ID == name):
 				self.emit('update')
 		self.service.on('update', update)
-		
+
 		def deregister(name):
 			if (self.ID == name):
 				self.emit('deregister')
 		self.service.on('deregister', deregister)
-		
+
 		def asyncResponseHandle(response):
-			ID = response.get('id');
-			code = response.get('status');
-			data = response.get('payload');
+			ID = response.get('id')
+			code = response.get('status')
+			data = response.get('payload')
 			if not self.transactions.get(ID) == None:
 				self.transactions[ID](code, data)
 				del self.transactions[ID]
 			if not self.observations.get(ID) == None:
 				self.observations[ID](code, data)
 		self.service.on('async-response', asyncResponseHandle)
-		
+
 	def addAsyncCallback(self, ID, callback):
 		self.transactions[ID] = callback
-		
+
 	def getObjects(self):
 		try:
 			response = self.service.get('/endpoints/'+self.ID)
@@ -316,9 +328,9 @@ class Device(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
-	def read(self, path, callback = None):
+	def read(self, path, callback=None):
 		try:
 			response = self.service.get('/endpoints/'+self.ID+path)
 			if (response.status_code == 202):
@@ -329,11 +341,12 @@ class Device(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
-	def write(self, path, payload, callback = None, contentType = 'application/vnd.oma.lwm2m+tlv'):
+	def write(self, path, callback=None, payload=None, contentType='application/vnd.oma.lwm2m+tlv'):
 		try:
-			response = self.service.put('/endpoints/' + self.ID + path, payload, contentType)
+			response = self.service.put(
+				'/endpoints/' + self.ID + path, payload, contentType)
 			if (response.status_code == 202):
 				data = response.json()
 				ID = data['async-response-id']
@@ -342,11 +355,12 @@ class Device(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
-	def execute(self, path, payload = None, callback = None, contentType = 'text/plain'):
+	def execute(self, path, callback=None,  payload=None, contentType='text/plain'):
 		try:
-			response = self.service.post('/endpoints/' + self.ID + path, payload, contentType)
+			response = self.service.post(
+				'/endpoints/' + self.ID + path, payload, contentType)
 			if (response.status_code == 202):
 				data = response.json()
 				ID = data['async-response-id']
@@ -355,9 +369,9 @@ class Device(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
-	def observe(self, path, callback = None):
+	def observe(self, path, callback=None):
 		try:
 			response = self.service.put('/subscriptions/' + self.ID + path)
 			if (response.status_code == 202):
@@ -368,13 +382,11 @@ class Device(event_emitter.EventEmitter):
 			else:
 				raise requests.HTTPError(response.status_code)
 		except Exception, e:
-			raise e;
+			raise e
 
 	def cancelObserve(self, path):
 		try:
 			response = self.service.delete('/subscriptions/' + self.ID + path)
 			return response.status_code
 		except Exception, e:
-			raise e;
-
-
+			raise e
