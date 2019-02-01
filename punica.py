@@ -3,7 +3,8 @@ import json
 import threading
 import event_emitter
 import socket
-
+import httplib
+import time
 
 class Service(event_emitter.EventEmitter):
 	def __init__(self, opts=None):
@@ -31,6 +32,7 @@ class Service(event_emitter.EventEmitter):
 		try:
 			if not opts == None:
 				self.configure(opts)
+			self.stop()
 			if self.config['authentication']:
 				self.authenticationEvent = threading.Event()
 				self._startAuthenticate()
@@ -45,14 +47,19 @@ class Service(event_emitter.EventEmitter):
 			raise e
 
 	def stop(self):
-		if self.config['authentication']:
+		if hasattr(self, 'authenticationEvent'):
 			self.authenticationEvent.set()
 			self.authenticateTimer.cancel()
-		if self.config['polling']:
+			#del self.authenticationEvent
+
+		if hasattr(self, 'pullEvent'):
 			self.pullEvent.set()
 			self.pullTimer.cancel()
-		else:
+			#del self.pullEvent
+
+		if hasattr(self, 'serverRun') and self.serverRun:
 			self.shutDownServer()
+			#del self.serverRun
 
 	def getDevices(self):
 		try:
@@ -111,20 +118,20 @@ class Service(event_emitter.EventEmitter):
 	def createServer(self):
 		self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		self.s.bind(('localhost', 5725))
+		self.s.bind(('', 5725))
 		self.s.listen(10)
 		self.s.settimeout(10)
 		self.serverRun = True
 		while self.serverRun:
 			conn, addr = self.s.accept()
 			data = conn.recv(1024)
+			if not data:
+				break
 			(headers, js) = data.split("\r\n\r\n")
 			if js:
 				dataJson = json.loads(js)
 			reply = 'OK...' + data
 
-			if not data:
-				break
 			conn.sendall(reply)
 			conn.close()
 			if dataJson:
@@ -150,6 +157,8 @@ class Service(event_emitter.EventEmitter):
 
 	def shutDownServer(self):
 		self.serverRun = False
+		conn = httplib.HTTPConnection("localhost", self.config['port'])
+		conn.request("PUT", "/notification", '')
 		self.deleteNotificationCallback()
 
 	def registerNotificationCallback(self):
