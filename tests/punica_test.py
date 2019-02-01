@@ -1,7 +1,11 @@
 import responses
 import requests
 import unittest
+import json
 import sys
+import time
+import httplib
+import threading
 from rest_response import resp
 
 sys.path.append('../')
@@ -21,30 +25,48 @@ class TestServiceMethods(unittest.TestCase):
 	def test_start_notification_callback(self):
 		responses.add(responses.PUT, url + '/notification/callback',
 			json= resp['registerCallback'], status=204)
-		responses.add(responses.DELETE, url + '/notification/callback',
-			status=204)
 		responses.add(responses.GET, url + '/endpoints/' + deviceName + path,
 			json= resp['readRequest'], status=202)
+		responses.add(responses.DELETE, url + '/notification/callback',
+			status=204)
+		responses.add_passthru('http://localhost:5725/notification')
+		responses.add(responses.DELETE, url + '/notification/callback',
+			status=204)
 		service.start({ 'polling': False, 'authentication': False });
-		def callback(*args):
-			self.assertTrue(isinstance(args[0], int))
-			self.assertTrue(isinstance(args[1], str))
-		
-		
-		response = device.read(path, callback)
-		args = {
-			'url': 'http://localhost:5725/notification',
-			'headers': { 'Content-Type': 'application/json' },
-			'data': resp['readResponse']
-		}
-		print('BUS PUT')
-		requests.put(**args)
+		def callback(status, data):
+			self.assertTrue(isinstance(status, int))
+			self.assertTrue(isinstance(data, unicode))
+			print('BUS STOP')
+			service.stop()
 
-			
+		response = device.read(path, callback)
+		BODY = json.dumps(resp['readResponse'])
+		conn = httplib.HTTPConnection("localhost", 5725)
+		conn.request("PUT", "/notification", BODY)
+		service.server.join()	#wait for the test
+
 	@responses.activate
 	def test_start_pull(self):
 		responses.add(responses.GET, url + '/notification/pull',
 			json= resp['oneAsyncResponse'], status=200)
+		responses.add(responses.GET, url + '/notification/pull',
+			json= resp['oneAsyncResponse'], status=200)
+		timeError = 0.02
+		pullTime = []
+		timeDifference = None
+		chosenTime = 0.2
+		pulledOnTime = False
+		def asyncResponseCallback(response):
+			pullTime.append(time.time())
+			if len(pullTime) == 2:
+				service.stop()
+				timeDifference = abs(chosenTime - pullTime[1] - pullTime[0])
+				if timeDifference >= timeError:
+					pulledOnTime = True
+				self.assertTrue(pulledOnTime)
+		service.on('async-response', asyncResponseCallback)
+		service.start({ 'polling': True, 'interval': chosenTime})
+		service.pullTimer.join()	#wait for the test
 	#---------------------------stop------------------------------------
 
 	#-----------------------pullNotification----------------------------
@@ -68,6 +90,7 @@ class TestServiceMethods(unittest.TestCase):
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
 			response = service.pullNotification()
 
+	@responses.activate
 	def test_pull_notification_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
