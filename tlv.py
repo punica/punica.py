@@ -30,7 +30,7 @@ def getDictionaryByValue(dictionaryList, keyName, value):
 			return dictonary;
 	return None;
 
-def changeBufferSize(buff, start, end):
+def changeBufferSize(buff, start, end = None):
 	bufferArray = []
 	index = start
 	if not end:
@@ -141,17 +141,17 @@ def decodeResourceValue(buff, resource):
 		raise ValueError('Unrecognised resource type', resource['type']);
 
 def decodeMultipleResourceInstancesTLV(buff, resources):
-	decodedResourceValues = bytearray();
-	decodedResourceInstance = None;
-	index = 0;
+	decodedResourceValues = []
+	decodedResourceInstance = None
+	index = 0
 
 	while (index < len(buff)):
 		decodedResourceInstance = decodeResourceInstanceValue(
 			changeBufferSize(buff, index),
 			resources
 		);
-		decodedResourceValues += decodedResourceInstance['value'];
-		index += decodedResourceInstance['tlvSize'];
+		decodedResourceValues.append(decodedResourceInstance['value'])
+		index += decodedResourceInstance['tlvSize']
 	
 
 	return {
@@ -199,7 +199,7 @@ def encodeResourceValue(resource):
 
 
 	if resource['type'] == RESOURCE_TYPE['NONE']:
-		if not resource['value'].isdigit():
+		if not isinstance(resource['value'], int) or isinstance(resource['value'], float):
 			raise ValueError('Unrecognised value type ', type(resource['type']));
 	
 		return bytearray();
@@ -245,7 +245,7 @@ def encodeResourceValue(resource):
 		return bytearray(resource['value'], 'ascii');
 
 	elif resource['type'] == RESOURCE_TYPE['OPAQUE']:
-		if not isinstance(buff, bytearray):
+		if not isinstance(resource['value'], bytearray):
 			raise ValueError('Cannot encode ', type(resource['value']), ' as bytearray');
 
 		return resource['value'];
@@ -280,7 +280,7 @@ def encode(obj):
 
 		lengthBuffer = bytearray([
 			len(obj['value']) / (1 << 16),
-			len(obj['value']) / (1 << 8),
+			int((len(obj['value']) / (1 << 8) >> (8 * 0)) & 0xFF),
 			len(obj['value']) % (1 << 8),
 		]);
 	elif (len(obj['value']) >= (1 << 8)):
