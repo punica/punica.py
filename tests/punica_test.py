@@ -43,7 +43,7 @@ class TestServiceMethods(unittest.TestCase):
 		BODY = json.dumps(resp['readResponse'])
 		conn = httplib.HTTPConnection("localhost", 5725)
 		conn.request("PUT", "/notification", BODY)
-		service.server.join()	#wait for the test
+		service.server.join()	#test hold
 
 	@responses.activate
 	def test_start_pull(self):
@@ -66,7 +66,7 @@ class TestServiceMethods(unittest.TestCase):
 				self.assertTrue(pulledOnTime)
 		service.on('async-response', asyncResponseCallback)
 		service.start({ 'polling': True, 'interval': chosenTime})
-		service.pullTimer.join()	#wait for the test
+		service.pullTimer.join()	#test hold
 	#---------------------------stop------------------------------------
 
 	#-----------------------pullNotification----------------------------
