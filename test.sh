@@ -1,2 +1,2 @@
 cd tests	
-coverage run punica_test.py
+coverage run *_test.py
