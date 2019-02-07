@@ -36,7 +36,6 @@ class TestServiceMethods(unittest.TestCase):
 		def callback(status, data):
 			self.assertTrue(isinstance(status, int))
 			self.assertTrue(isinstance(data, unicode))
-			print('BUS STOP')
 			service.stop()
 
 		response = device.read(path, callback)
