@@ -65,16 +65,16 @@ class TestServiceMethods(unittest.TestCase):
 				self.assertTrue(pulledOnTime)
 		service.on('async-response', asyncResponseCallback)
 		service.start({ 'polling': True, 'interval': chosenTime})
-		service.pullTimer.join()	#test hold
+		service.pull_timer.join()	#test hold
 	#---------------------------stop------------------------------------
 
-	#-----------------------pullNotification----------------------------
+	#-----------------------pull_notification----------------------------
 	@responses.activate
 	def test_pull_notification_return(self):
 		responses.add(responses.GET, url + '/notification/pull',
 			json= resp['oneAsyncResponse'], status=200)
 
-		response = service.pullNotification();
+		response = service.pull_notification();
 		self.assertTrue('registrations' in response.keys())
 		self.assertTrue('reg-updates' in response.keys())
 		self.assertTrue('de-registrations' in response.keys())
@@ -87,21 +87,21 @@ class TestServiceMethods(unittest.TestCase):
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = service.pullNotification()
+			response = service.pull_notification()
 
 	@responses.activate
 	def test_pull_notification_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = service.pullNotification()
+			response = service.pull_notification()
 
-	#--------------------------getDevices------------------------------
+	#--------------------------get_devices------------------------------
 	@responses.activate
 	def test_get_devices_return(self):
 		responses.add(responses.GET, url + '/endpoints',
 			json= resp['endpoints'], status=200)
 
-		response = service.getDevices();
+		response = service.get_devices();
 		self.assertTrue('name' in response[0].keys())
 		self.assertTrue('type' in response[0].keys())
 		self.assertTrue('status' in response[0].keys())
@@ -114,26 +114,26 @@ class TestServiceMethods(unittest.TestCase):
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = service.getDevices()
+			response = service.get_devices()
 
 	def test_get_devices_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = service.getDevices()
+			response = service.get_devices()
 
-	#-------------------------getVersion--------------------------------
+	#-------------------------get_version--------------------------------
 	@responses.activate
 	def test_get_version_return(self):
 		responses.add(responses.GET, url + '/version',
 			json= resp['version'], status=200)
 
-		response = service.getVersion();
+		response = service.get_version();
 		self.assertEqual(response, '1.0.0')
 
 	def test_get_version_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = service.getDevices()
+			response = service.get_version()
 
 	#--------------------------authenticate----------------------------
 	@responses.activate
@@ -141,7 +141,7 @@ class TestServiceMethods(unittest.TestCase):
 		responses.add(responses.POST, url + '/authenticate',
 			json= resp['authentication'], status=201)
 
-		response = service.authenticate();
+		response = service.authenticate()
 		self.assertTrue('access_token' in response.keys())
 		self.assertTrue('expires_in' in response.keys())
 
@@ -159,13 +159,13 @@ class TestServiceMethods(unittest.TestCase):
 		with self.assertRaises(Exception):
 			response = service.authenticate()
 
-	#------------------registerNotificationCallback---------------------
+	#------------------register_notification_callback---------------------
 	@responses.activate
 	def test_register_notification_callback_return(self):
 		responses.add(responses.PUT, url + '/notification/callback',
 			json= resp['registerCallback'], status=204)
 
-		response = service.registerNotificationCallback();
+		response = service.register_notification_callback();
 		self.assertTrue(response)
 
 	@responses.activate
@@ -175,27 +175,27 @@ class TestServiceMethods(unittest.TestCase):
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = service.registerNotificationCallback()
+			response = service.register_notification_callback()
 
 	def test_register_notification_callback_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = service.registerNotificationCallback()
+			response = service.register_notification_callback()
 
-	#----------------------deleteNotificationCallback-------------------
+	#----------------------delete_notification_callback-------------------
 	@responses.activate
 	def test_delete_notification_callback_wrong_status(self):
 		responses.add(responses.DELETE, url + '/notification/callback',
 			status=204)
 
-		response = service.deleteNotificationCallback()
+		response = service.delete_notification_callback()
 		self.assertTrue(response == 204)
 
 
 	def test_delete_notification_callback_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = service.deleteNotificationCallback()
+			response = service.delete_notification_callback()
 
 	#------------------------get---------------------------
 	@responses.activate
@@ -336,14 +336,14 @@ class TestServiceMethods(unittest.TestCase):
 
 
 class TestDeviceMethods(unittest.TestCase):
-	#--------------------------getObjects-------------------------------
+	#--------------------------get_objects-------------------------------
 	@responses.activate
 	def test_get_objects_return(self):
 		responses.add(responses.GET, url + '/endpoints/' + deviceName,
 			json= resp['sensorObjects'], status=202)
 
 
-		response = device.getObjects()
+		response = device.get_objects()
 		self.assertTrue('uri' in response[0].keys())
 
 	@responses.activate
@@ -353,12 +353,12 @@ class TestDeviceMethods(unittest.TestCase):
 
 		response= None
 		with self.assertRaisesRegexp(requests.HTTPError, '404'):
-			response = device.getObjects()
+			response = device.get_objects()
 
 	def test_get_objects_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = device.getObjects()
+			response = device.get_objects()
 
 	#--------------------------read-------------------------------
 	@responses.activate
@@ -380,7 +380,7 @@ class TestDeviceMethods(unittest.TestCase):
 			self.assertTrue(isinstance(args[1], str))
 
 		response = device.read(path, callback)
-		service._processEvents(resp['responsesOfAllOperations'])
+		service._process_events(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_read_wrong_status(self):
@@ -416,7 +416,7 @@ class TestDeviceMethods(unittest.TestCase):
 			self.assertTrue(isinstance(args[0], int))
 
 		response = device.write(path, callback, tlvBuffer)
-		service._processEvents(resp['responsesOfAllOperations'])
+		service._process_events(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_write_wrong_status(self):
@@ -451,7 +451,7 @@ class TestDeviceMethods(unittest.TestCase):
 			self.assertTrue(isinstance(args[0], int))
 
 		response = device.execute(path, None, callback)
-		service._processEvents(resp['responsesOfAllOperations'])
+		service._process_events(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_execute_wrong_status(self):
@@ -487,7 +487,7 @@ class TestDeviceMethods(unittest.TestCase):
 			self.assertTrue(isinstance(args[1], str))
 
 		response = device.observe(path, callback)
-		service._processEvents(resp['responsesOfAllOperations'])
+		service._process_events(resp['responsesOfAllOperations'])
 
 	@responses.activate
 	def test_observe_wrong_status(self):
@@ -503,21 +503,21 @@ class TestDeviceMethods(unittest.TestCase):
 		with self.assertRaises(Exception):
 			response = device.observe(path)
 
-	#--------------------------cancelObserve-------------------------------
+	#--------------------------cancel_observe-------------------------------
 	@responses.activate
 	def test_cancel_observe_return(self):
 		responses.add(responses.DELETE, url + '/subscriptions/' + deviceName + path,
 			status=204)
 
 
-		response = device.cancelObserve(path)
+		response = device.cancel_observe(path)
 		self.assertTrue(response == 204)
 
 
 	def test_cancel_observe_connection_failed(self):
 		response= None
 		with self.assertRaises(Exception):
-			response = device.cancelObserve(path)
+			response = device.cancel_observe(path)
 
 if __name__ == '__main__':
 	unittest.main()
