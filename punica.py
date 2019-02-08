@@ -8,8 +8,10 @@ import httplib
 import event_emitter
 import requests
 
+
 class Service(event_emitter.EventEmitter):
     def __init__(self, opts=None):
+        # pylint: disable=too-many-instance-attributes
         super(Service, self).__init__()
         self.config = {
             'host': 'http://localhost:8888',
@@ -25,6 +27,15 @@ class Service(event_emitter.EventEmitter):
             self.configure(opts)
         self.authentication_token = ''
         self.token_validation = 3600
+        self.pull_event = threading.Event()
+        self.server_run = False
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.authentication_event = threading.Event()
+        self.server = threading.Thread(target=self.create_server)
+        self.pull_timer = threading.Timer(
+            self.config['interval'], self._pull_and_process)
+        self.authenticate_timer = threading.Timer(
+            0.9 * self.token_validation, self._start_authenticate)
 
     def configure(self, opts):
         for opt in opts:
@@ -36,32 +47,28 @@ class Service(event_emitter.EventEmitter):
                 self.configure(opts)
             self.stop()
             if self.config['authentication']:
-                self.authentication_event = threading.Event()
+                self.authentication_event.set()
                 self._start_authenticate()
             if self.config['polling']:
-                self.pull_event = threading.Event()
+                self.pull_event.set()
                 self._pull_and_process()
             else:
-                self.server = threading.Thread(target=self.create_server)
                 self.server.start()
                 self.register_notification_callback()
         except Exception as ex:
             raise ex
 
     def stop(self):
-        if hasattr(self, 'authentication_event'):
-            self.authentication_event.set()
+        if self.authentication_event.is_set():
+            self.authentication_event.clear()
             self.authenticate_timer.cancel()
-            #del self.authentication_event
 
-        if hasattr(self, 'pull_event'):
-            self.pull_event.set()
+        if self.pull_event.is_set():
+            self.pull_event.clear()
             self.pull_timer.cancel()
-            #del self.pull_event
 
         if hasattr(self, 'server_run') and self.server_run:
             self.shut_down_server()
-            #del self.server_run
 
     def get_devices(self):
         try:
@@ -101,7 +108,7 @@ class Service(event_emitter.EventEmitter):
         finally:
             self.pull_timer = threading.Timer(
                 self.config['interval'], self._pull_and_process)
-            if not self.pull_event.is_set():
+            if self.pull_event.is_set():
                 self.pull_timer.start()
 
     def _start_authenticate(self):
@@ -114,22 +121,21 @@ class Service(event_emitter.EventEmitter):
         finally:
             self.authenticate_timer = threading.Timer(
                 0.9 * self.token_validation, self._start_authenticate)
-            if not self.authentication_event.is_set():
+            if self.authentication_event.is_set():
                 self.authenticate_timer.start()
 
     def create_server(self):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(('', 5725))
         self.sock.listen(10)
         self.sock.settimeout(10)
         self.server_run = True
         while self.server_run:
-            conn, addr = self.sock.accept()
+            (conn, _) = self.sock.accept()
             data = conn.recv(1024)
             if not data:
                 break
-            (headers, json_data) = data.split("\r\n\r\n")
+            (_, json_data) = data.split("\r\n\r\n")
             if json_data:
                 parsed_json = json.loads(json_data)
             reply = 'OK...' + data
@@ -137,9 +143,9 @@ class Service(event_emitter.EventEmitter):
             conn.sendall(reply)
             conn.close()
             if parsed_json:
-                processEventsThread = threading.Thread(
+                process_events_thread = threading.Thread(
                     target=self._process_events, args=(parsed_json,))
-                processEventsThread.start()
+                process_events_thread.start()
         self.sock.close()
 
     def authenticate(self):
@@ -198,9 +204,8 @@ class Service(event_emitter.EventEmitter):
 
         responses = sorted(data['async-responses'],
                            key=lambda k: k['timestamp'])
-        for i in range(0, len(responses)):
-            res = responses[i]
-            self.emit('async-response', response=res)
+        for resp in responses:
+            self.emit('async-response', response=resp)
 
     def get(self, path):
         url = self.config['host'] + path
@@ -412,7 +417,8 @@ class Device(event_emitter.EventEmitter):
 
     def cancel_observe(self, path):
         try:
-            response = self.service.delete('/subscriptions/' + self.name + path)
+            response = self.service.delete(
+                '/subscriptions/' + self.name + path)
             return response.status_code
         except Exception as ex:
             raise ex
