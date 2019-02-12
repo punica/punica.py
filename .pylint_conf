@@ -206,7 +206,7 @@ ignore-on-opaque-inference=yes
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
 # qualified names.
-ignored-classes=optparse.Values,thread._local,_thread._local,SQLObject,_socketobject
+ignored-classes=optparse.Values,thread._local,_thread._local,SQLObject,_socketobject,responses
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime
@@ -485,7 +485,7 @@ max-attributes=20
 max-bool-expr=5
 
 # Maximum number of branch for function / method body
-max-branches=12
+max-branches=20
 
 # Maximum number of locals for function / method body
 max-locals=15
@@ -494,10 +494,10 @@ max-locals=15
 max-parents=7
 
 # Maximum number of public methods for a class (see R0904).
-max-public-methods=20
+max-public-methods=30
 
 # Maximum number of return / yield for function / method body
-max-returns=6
+max-returns=10
 
 # Maximum number of statements in function / method body
 max-statements=50
