@@ -1,35 +1,41 @@
 from punica import Service
 from punica import Device
-from tlv import *
+from tlv import RESOURCE_TYPE, encode_resource, decode_resource
 
-device_id = 'threeSeven'
-write_resource_path = '/1/0/3'
-write_resource_type = RESOURCE_TYPE['INTEGER']
-write_resource_value = 3
-observe_resource_path = '/3312/0/5850'
-observe_resource_type = RESOURCE_TYPE['BOOLEAN']
+DEVICE_ID = 'threeSeven'
+WRITE_RESOURCE_PATH = '/1/0/3'
+WRITE_RESOURCE_TYPE = RESOURCE_TYPE['INTEGER']
+WRITE_RESOURCE_VALUE = 3
+OBSERVE_RESOURCE_PATH = '/3312/0/5850'
+OBSERVE_RESOURCE_TYPE = RESOURCE_TYPE['BOOLEAN']
 
-service = Service()
-device = Device(service, 'threeSeven')
-service.start()
+SERVICE = Service()
+DEVICE = Device(SERVICE, 'threeSeven')
+SERVICE.start()
 
-resource_observe = {
-	'identifier': int(observe_resource_path.split('/')[3]),
-	'type': observe_resource_type
-};
+RESOURCE_OBSERVE = {
+    'identifier': int(OBSERVE_RESOURCE_PATH.split('/')[3]),
+    'type': OBSERVE_RESOURCE_TYPE
+}
+
+
 def observe_callback(code, data):
-	print decodeResource(bytearray(data.decode('base64')), resource_observe)
-	device.cancelObserve(observe_resource_path)
-	service.stop()
+    print decode_resource(bytearray(data.decode('base64')), RESOURCE_OBSERVE)
+    DEVICE.cancel_observe(OBSERVE_RESOURCE_PATH)
+    SERVICE.stop()
 
-resource_write = {
-	'identifier': int(write_resource_path.split('/')[3]),
-	'type': write_resource_type,
-	'value': write_resource_value
-};
-encoded_resource_write = encodeResource(resource_write);
+
+RESOURCE_WRITE = {
+    'identifier': int(WRITE_RESOURCE_PATH.split('/')[3]),
+    'type': WRITE_RESOURCE_TYPE,
+    'value': WRITE_RESOURCE_VALUE
+}
+ENCODED_RESOURCE_WRITE = encode_resource(RESOURCE_WRITE)
+
+
 def write_callback(code, data):
-	print 'WRITE COMPLETED, status:', code
-	device.observe(observe_resource_path, observe_callback)
+    print 'WRITE COMPLETED, status:', code
+    DEVICE.observe(OBSERVE_RESOURCE_PATH, observe_callback)
 
-device.write(write_resource_path, write_callback, encoded_resource_write)
+
+DEVICE.write(WRITE_RESOURCE_PATH, write_callback, ENCODED_RESOURCE_WRITE)

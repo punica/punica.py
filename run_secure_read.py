@@ -1,33 +1,34 @@
 from punica import Service
 from punica import Device
-from tlv import *
+from tlv import RESOURCE_TYPE, decode_resource
 
-options = {
-	'host' : 'https://localhost:8888',
-	'ca' : './certificate.pem',
-	'authentication' : True,
-	'username' : 'admin',
-	'password' : 'not-same-as-name',
-	'interval' : 1.234,
-	'polling' : True,
-	'port' : 5725
+OPTIONS = {
+    'host': 'https://localhost:8888',
+    'ca': './certificate.pem',
+    'authentication': True,
+    'username': 'admin',
+    'password': 'not-same-as-name',
+    'interval': 1.234,
+    'polling': True,
+    'port': 5725
 }
 
-read_resource_path = '/3312/0/5850'
-read_resource_type = RESOURCE_TYPE['BOOLEAN']
+READ_RESOURCE_PATH = '/3312/0/5850'
+READ_RESOURCE_TYPE = RESOURCE_TYPE['BOOLEAN']
 
-service = Service(options);
-device = Device(service, 'threeSeven');
+SERVICE = Service(OPTIONS)
+DEVICE = Device(SERVICE, 'threeSeven')
 
-service.start();
-resource_read = {
-	'identifier': int(read_resource_path.split('/')[3]),
-	'type': read_resource_type
-};
+SERVICE.start()
+RESOURCE_READ = {
+    'identifier': int(READ_RESOURCE_PATH.split('/')[3]),
+    'type': READ_RESOURCE_TYPE
+}
+
 
 def read_callback(code, data):
-	print decodeResource(bytearray(data.decode('base64')), resource_read);
-	service.stop();
+    print decode_resource(bytearray(data.decode('base64')), RESOURCE_READ)
+    SERVICE.stop()
 
-device.read(read_resource_path, read_callback);
 
+DEVICE.read(READ_RESOURCE_PATH, read_callback)
