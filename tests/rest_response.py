@@ -115,36 +115,37 @@ resp = {
     # 'notificationCallback': { url: `http://${ip.address()}:5728/notification`, headers: {} },
     'badNotificationCallback': {'url': 'http://1.1.1.1:7777/notification', 'headers': {}},
     'registerCallback': '',
-    'getEndpoints': [{
-        'name': 'threeSeven',
-        'type': '8dev_3700',
-        'status': 'ACTIVE',
-        'q': True
-    },
-                     {
-                         'name': 'threeEight',
-                         'type': '8dev_3800',
-                         'status': 'ACTIVE',
-                         'q': True
-                     },
-                     {
-                         'name': 'fourFour',
-                         'type': '8dev_4400',
-                         'status': 'ACTIVE',
-                         'q': True
-                     },
-                     {
-                         'name': 'fourFour1',
-                         'type': '8dev_4400',
-                         'status': 'ACTIVE',
-                         'q': True
-                     },
-                     {
-                         'name': 'fourFive',
-                         'type': '8dev_4500',
-                         'status': 'ACTIVE',
-                         'q': True
-                     }],
+    'getEndpoints': [
+        {
+            'name': 'threeSeven',
+            'type': '8dev_3700',
+            'status': 'ACTIVE',
+            'q': True
+        },
+        {
+            'name': 'threeEight',
+            'type': '8dev_3800',
+            'status': 'ACTIVE',
+            'q': True
+        },
+        {
+            'name': 'fourFour',
+            'type': '8dev_4400',
+            'status': 'ACTIVE',
+            'q': True
+        },
+        {
+            'name': 'fourFour1',
+            'type': '8dev_4400',
+            'status': 'ACTIVE',
+            'q': True
+        },
+        {
+            'name': 'fourFive',
+            'type': '8dev_4500',
+            'status': 'ACTIVE',
+            'q': True
+        }],
     'version': '1.0.0',
     'oneAsyncResponse': {
         'registrations': [
