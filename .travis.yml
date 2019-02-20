@@ -1,0 +1,12 @@
+language: python
+python:
+ - "2.7"
+install:
+ - pip install codecov
+ - pip install pylint
+script:
+ - sh install_modules.sh
+ - sh test.sh
+after_success:
+ - coverage combine
+ - codecov
