@@ -237,7 +237,7 @@ def decode_resource(buff, resource):
 
     if resource['identifier'] != decoded_resource['identifier']:
         raise ValueError(
-			'Decoded resource TLV identifier and description identifiers do not match')
+            'Decoded resource TLV identifier and description identifiers do not match')
 
     if decoded_resource['type'] == TYPE['RESOURCE']:
         resource_value = decode_resource_value(decoded_resource['value'], resource)
@@ -566,8 +566,7 @@ def decode_object_instance(buff, object_instance):
 
         if resource_description is None:
             raise ValueError('No resource description found (x/',
-				object_instance['identifier'], '/', resource_identifier,')')
-
+                             object_instance['identifier'], '/', resource_identifier, ')')
         decoded_resource = decode_resource(remaining_buffer, resource_description)
         decoded_resources.append(decoded_resource)
         index += decoded_resource['tlvSize']
@@ -604,8 +603,7 @@ def decode_object(buff, obj):
 
         if object_instance_description is None:
             raise ValueError('No object instance description found (',
-				obj['identifier'], '/', object_instance_identifier, ')')
-
+                             obj['identifier'], '/', object_instance_identifier, ')')
         decoded_object_instance = decode_object_instance(
             remaining_buffer, object_instance_description)
         decoded_object_instances.append(decoded_object_instance)
