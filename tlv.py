@@ -236,8 +236,7 @@ def decode_resource(buff, resource):
     resource_value = None
 
     if resource['identifier'] != decoded_resource['identifier']:
-        raise ValueError(
-            'Decoded resource TLV identifier and description identifiers do not match')
+        raise ValueError('Decoded resource TLV identifier and description identifiers do not match')
 
     if decoded_resource['type'] == TYPE['RESOURCE']:
         resource_value = decode_resource_value(
@@ -278,9 +277,7 @@ def encode_resource_value(resource):
         raise ValueError('Unrecognised type ', resource['type'])
 
     if resource['type'] == RESOURCE_TYPE['NONE']:
-        if not isinstance(
-                resource['value'],
-                int) or isinstance(resource['value'], float):
+        if not isinstance(resource['value'], int) or isinstance(resource['value'], float):
             raise ValueError('Unrecognised value type ',
                              type(resource['type']))
 
@@ -575,12 +572,7 @@ def decode_object_instance(buff, object_instance):
             object_instance['resources'], 'identifier', resource_identifier)
 
         if resource_description is None:
-            raise ValueError(
-                'No resource description found (x/',
-                object_instance['identifier'],
-                '/',
-                resource_identifier,
-                ')')
+            raise ValueError('No resource description found (x/', object_instance['identifier'], '/', resource_identifier,')')
 
         decoded_resource = decode_resource(
             remaining_buffer, resource_description)
@@ -618,12 +610,7 @@ def decode_object(buff, obj):
             obj['object_instances'], 'identifier', object_instance_identifier)
 
         if object_instance_description is None:
-            raise ValueError(
-                'No object instance description found (',
-                obj['identifier'],
-                '/',
-                object_instance_identifier,
-                ')')
+            raise ValueError('No object instance description found (', obj['identifier'], '/', object_instance_identifier, ')')
 
         decoded_object_instance = decode_object_instance(
             remaining_buffer, object_instance_description)
