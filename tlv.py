@@ -236,11 +236,11 @@ def decode_resource(buff, resource):
     resource_value = None
 
     if resource['identifier'] != decoded_resource['identifier']:
-        raise ValueError('Decoded resource TLV identifier and description identifiers do not match')
+        raise ValueError(
+			'Decoded resource TLV identifier and description identifiers do not match')
 
     if decoded_resource['type'] == TYPE['RESOURCE']:
-        resource_value = decode_resource_value(
-            decoded_resource['value'], resource)
+        resource_value = decode_resource_value(decoded_resource['value'], resource)
     elif decoded_resource['type'] == TYPE['MULTIPLE_RESOURCE']:
         resource_value = decode_multi_resource_instances(
             decoded_resource['value'], resource)['value']
@@ -388,8 +388,7 @@ def encode(obj):
 
         length_buffer = bytearray([])
 
-    return bytearray([type_byte]) + identifier_buffer + \
-        length_buffer + obj['value']
+    return bytearray([type_byte]) + identifier_buffer + length_buffer + obj['value']
 
 
 def encode_resource_instance(resource_instance):
@@ -467,8 +466,7 @@ def encode_object_instance(object_instance):
     resources_buffers = bytearray()
 
     for index in range(len(object_instance['resources'])):
-        resources_buffers += encode_resource(
-            object_instance['resources'][index])
+        resources_buffers += encode_resource(object_instance['resources'][index])
 
     return encode({
         'type': TYPE['OBJECT_INSTANCE'],
@@ -514,9 +512,7 @@ def decode_resource_instance(buff, resources):
     return {
         'type': resources['type'],
         'identifier': decoded_resource_instance['identifier'],
-        'value': decode_resource_value(
-            decoded_resource_instance['value'],
-            resources),
+        'value': decode_resource_value(decoded_resource_instance['value'], resources),
         'tlvSize': decoded_resource_instance['tlvSize'],
     }
 
@@ -537,9 +533,7 @@ def decode_resource_instance_value(buff, resource_instance):
         raise ValueError('Decoded resource TLV type is not resource instance')
 
     return {
-        'value': decode_resource_value(
-            decoded_resource_instance['value'],
-            resource_instance),
+        'value': decode_resource_value(decoded_resource_instance['value'], resource_instance),
         'tlvSize': decoded_resource_instance['tlvSize'],
     }
 
@@ -568,8 +562,7 @@ def decode_object_instance(buff, object_instance):
                 decoded_object_instance['value']))
         resource_identifier = decode(remaining_buffer)['identifier']
 
-        resource_description = get_dictionary_by_value(
-            object_instance['resources'], 'identifier', resource_identifier)
+        resource_description = get_dictionary_by_value(object_instance['resources'], 'identifier', resource_identifier)
 
         if resource_description is None:
             raise ValueError('No resource description found (x/',
