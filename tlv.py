@@ -572,10 +572,10 @@ def decode_object_instance(buff, object_instance):
             object_instance['resources'], 'identifier', resource_identifier)
 
         if resource_description is None:
-            raise ValueError('No resource description found (x/', object_instance['identifier'], '/', resource_identifier,')')
+            raise ValueError('No resource description found (x/',
+				object_instance['identifier'], '/', resource_identifier,')')
 
-        decoded_resource = decode_resource(
-            remaining_buffer, resource_description)
+        decoded_resource = decode_resource(remaining_buffer, resource_description)
         decoded_resources.append(decoded_resource)
         index += decoded_resource['tlvSize']
 
@@ -610,7 +610,8 @@ def decode_object(buff, obj):
             obj['object_instances'], 'identifier', object_instance_identifier)
 
         if object_instance_description is None:
-            raise ValueError('No object instance description found (', obj['identifier'], '/', object_instance_identifier, ')')
+            raise ValueError('No object instance description found (',
+				obj['identifier'], '/', object_instance_identifier, ')')
 
         decoded_object_instance = decode_object_instance(
             remaining_buffer, object_instance_description)
