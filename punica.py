@@ -1,6 +1,4 @@
-'''
-This module demonstrates Service and Device
-'''
+"""This module demonstrates Service and Device"""
 import json
 import threading
 import socket
@@ -10,6 +8,13 @@ import requests
 
 
 class Service(event_emitter.EventEmitter):
+    """This class represents Punica API service
+    Constructor initializes default configurations. Reconfigures with given options.
+
+    Parameters:
+    opts (object): Options object (optional)
+    """
+
     def __init__(self, opts=None):
         # pylint: disable=too-many-instance-attributes
         super(Service, self).__init__()
@@ -38,10 +43,22 @@ class Service(event_emitter.EventEmitter):
             0.9 * self.token_validation, self._start_authenticate)
 
     def configure(self, opts):
+        """Configures service configuration with given options.
+
+        Parameters:
+        opts (object): Options object (optional)
+        """
         for opt in opts:
             self.config[opt] = opts[opt]
 
     def start(self, opts=None):
+        """(Re)starts authentication,
+        socket listener creation and notification callback registration
+        or notification polling processes.
+
+        Parameters:
+        opts (object): Options object (optional)
+        """
         try:
             if opts is not None:
                 self.configure(opts)
@@ -59,6 +76,11 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def stop(self):
+        """Stops receiving and processing events
+        Stops this service and all it's subservices
+        that were started in start().
+        Cleans up resources
+        """
         if self.authentication_event.is_set():
             self.authentication_event.clear()
             self.authenticate_timer.cancel()
@@ -71,6 +93,12 @@ class Service(event_emitter.EventEmitter):
             self.shut_down_server()
 
     def get_devices(self):
+        """Sends request to get all registered endpoints, that are
+        currently registered to the LwM2M service.
+
+        Returns:
+        list: List of endpoints
+        """
         try:
             response = self.get('/endpoints')
             if response.status_code == 200:
@@ -81,6 +109,11 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def get_version(self):
+        """Sends request to get Punica server version.
+
+        Returns:
+        str: Punica server's version
+        """
         try:
             response = self.get('/version')
             if response.status_code == 200:
@@ -91,6 +124,12 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def pull_notification(self):
+        """Sends request to get pending/queued notifications.
+
+        Returns:
+        object: notification data (registrations,
+        deregistrations, updates, async responses)
+        """
         try:
             response = self.get('/notification/pull')
             if response.status_code == 200:
@@ -101,6 +140,7 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def _pull_and_process(self):
+        """Starts pulling and processing notifications"""
         try:
             self._process_events(self.pull_notification())
         except Exception as ex:
@@ -112,6 +152,7 @@ class Service(event_emitter.EventEmitter):
                 self.pull_timer.start()
 
     def _start_authenticate(self):
+        """Starts authenticating"""
         try:
             data = self.authenticate()
             self.authentication_token = data['access_token']
@@ -125,6 +166,7 @@ class Service(event_emitter.EventEmitter):
                 self.authenticate_timer.start()
 
     def create_server(self):
+        """Creates socket listener."""
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(('', 5725))
         self.sock.listen(10)
@@ -149,6 +191,11 @@ class Service(event_emitter.EventEmitter):
         self.sock.close()
 
     def authenticate(self):
+        """Sends request to authenticate user.
+
+        Returns:
+        object: authentication data (token and after what time it expires)
+        """
         try:
             data = {
                 'name': self.config['username'],
@@ -165,12 +212,14 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def shut_down_server(self):
+        """Shuts down socket listener"""
         self.server_run = False
         conn = httplib.HTTPConnection("localhost", self.config['port'])
         conn.request("PUT", "/notification", '')
         self.delete_notification_callback()
 
     def register_notification_callback(self):
+        """Sends request to register notification callback."""
         try:
             data = {
                 'url': 'http://localhost:5725/notification',
@@ -186,6 +235,11 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def delete_notification_callback(self):
+        """Sends request to delete notification callback
+
+        Returns:
+        int: HTTP status code
+        """
         try:
             response = self.delete('/notification/callback')
             return response.status_code
@@ -193,6 +247,12 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def _process_events(self, data):
+        """Handles notification data and emits events.
+
+        Parameters:
+        data (object): Events - Notifications (registrations,
+        reg-updates, de-registrations, async-responses)
+        """
         for i in data['registrations']:
             self.emit('register', i['name'])
 
@@ -208,6 +268,14 @@ class Service(event_emitter.EventEmitter):
             self.emit('async-response', response=resp)
 
     def get(self, path):
+        """Performs GET requests with given path.
+
+        Parameters:
+        path (str): Request path
+
+        Returns:
+        object: Object with data and response objects
+        """
         url = self.config['host'] + path
         request_data = {
             'url': url,
@@ -231,6 +299,16 @@ class Service(event_emitter.EventEmitter):
             path,
             argument=None,
             content_type='application/vnd.oma.lwm2m+tlv'):
+        """Performs PUT requests with given path, data and data type.
+
+        Parameters:
+        path (str): Request path
+        argument (object): Data which will be sent (optional)
+        content_type (str): Data type (optional)
+
+        Returns:
+        object: Object with data and response objects
+        """
         url = self.config['host'] + path
         request_data = {
             'url': url,
@@ -261,6 +339,16 @@ class Service(event_emitter.EventEmitter):
             path,
             argument=None,
             content_type='application/vnd.oma.lwm2m+tlv'):
+        """Performs POST requests with given path, data and data type.
+
+        Parameters:
+        path (str): Request path
+        argument (object): Data which will be sent (optional)
+        content_type (str): Data type (optional)
+
+        Returns:
+        object: Object with data and response objects
+        """
         url = self.config['host'] + path
         request_data = {
             'url': url,
@@ -287,6 +375,14 @@ class Service(event_emitter.EventEmitter):
             raise ex
 
     def delete(self, path):
+        """Performs DELETE requests with given path.
+
+        Parameters:
+        path (str): Request path
+
+        Returns:
+        object: Object with data and response objects
+        """
         url = self.config['host'] + path
         request_data = {
             'url': url,
@@ -307,7 +403,18 @@ class Service(event_emitter.EventEmitter):
 
 
 class Device(event_emitter.EventEmitter):
+    """This class represents device (endpoint)."""
+
     def __init__(self, service, name):
+        """Constructor initiliazes given service object, device's id
+        and starts listening for events emited by service (when device
+        registers, updates, deregisters, sends data), handles "async
+        responses" and emits "register", "update", "deregister" events.
+
+        Parameters:
+        service (object): Service object
+        id (str): Endpoint id
+        """
         super(Device, self).__init__()
 
         self.service = service
@@ -342,9 +449,20 @@ class Device(event_emitter.EventEmitter):
         self.service.on('async-response', async_response_handle)
 
     def add_async_callback(self, async_id, callback):
+        """Adds a callback to transactions list. Key value is device's id.
+
+        Parameters:
+        path (str): Request path
+        callback (function): Callback which will be called when async response is received
+        """
         self.transactions[async_id] = callback
 
     def get_objects(self):
+        """Sends request to get all device's objects.
+
+        Returns:
+        object: Dictonary with device's objects
+        """
         try:
             response = self.service.get('/endpoints/' + self.name)
             if response.status_code == 202:
@@ -356,6 +474,15 @@ class Device(event_emitter.EventEmitter):
             raise ex
 
     def read(self, path, callback=None):
+        """Sends request to read device's resource data.
+
+        Parameters:
+        path (str): Resource path
+        callback (function): Callback which will be called when async response is received
+
+        Returns:
+        str: async response id
+        """
         try:
             response = self.service.get('/endpoints/' + self.name + path)
             if response.status_code == 202:
@@ -370,6 +497,17 @@ class Device(event_emitter.EventEmitter):
 
     def write(self, path, callback=None, payload=None,
               content_type='application/vnd.oma.lwm2m+tlv'):
+        """Sends request to write a value into device's resource.
+
+        Parameters:
+        path (str): Resource path
+        callback (function): Callback which will be called when async response is received
+        payload (bytearray):  Data (optional)
+        content_type (str): Content type (optional)
+
+        Returns:
+        str: async response id
+        """
         try:
             response = self.service.put(
                 '/endpoints/' + self.name + path, payload, content_type)
@@ -389,6 +527,17 @@ class Device(event_emitter.EventEmitter):
             callback=None,
             payload=None,
             content_type='text/plain'):
+        """Sends request to execute device's resource.
+
+        Parameters:
+        path (str): Resource path
+        callback (function): Callback which will be called when async response is received
+        payload (bytearray):  Data (optional)
+        content_type (str): Content type (optional)
+
+        Returns:
+        str: async response id
+        """
         try:
             response = self.service.post(
                 '/endpoints/' + self.name + path, payload, content_type)
@@ -403,6 +552,15 @@ class Device(event_emitter.EventEmitter):
             raise ex
 
     def observe(self, path, callback=None):
+        """Sends request to subscribe to resource.
+
+        Parameters:
+        path (str): Resource path
+        callback (function): Callback which will be called when async response is received
+
+        Returns:
+        str: async response id
+        """
         try:
             response = self.service.put('/subscriptions/' + self.name + path)
             if response.status_code == 202:
@@ -416,6 +574,14 @@ class Device(event_emitter.EventEmitter):
             raise ex
 
     def cancel_observe(self, path):
+        """Sends request to cancel subscriptions.
+
+        Parameters:
+        path (str): Resource path
+
+        Returns:
+        int: HTTP status code
+        """
         try:
             response = self.service.delete(
                 '/subscriptions/' + self.name + path)
