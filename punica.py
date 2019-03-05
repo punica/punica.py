@@ -5,6 +5,7 @@ import socket
 import httplib
 import event_emitter
 import requests
+from netifaces import interfaces, ifaddresses, AF_INET
 
 
 class Service(event_emitter.EventEmitter):
@@ -30,6 +31,7 @@ class Service(event_emitter.EventEmitter):
         }
         if opts is not None:
             self.configure(opts)
+        self.ip = self.get_ip_address()
         self.authentication_token = ''
         self.token_validation = 3600
         self.pull_event = threading.Event()
@@ -50,6 +52,21 @@ class Service(event_emitter.EventEmitter):
         """
         for opt in opts:
             self.config[opt] = opts[opt]
+
+    def get_ip_address(self):
+        """Finds interface and sets IP address. Ignores loopback address.
+
+        Returns:
+                str: IP address
+        """
+        ip = 'localhost'
+        for iface_name in interfaces():
+            addresses = [i['addr'] for i in ifaddresses(
+                iface_name).setdefault(AF_INET, [{'addr': ''}])]
+            if addresses[0] and addresses[0] != '127.0.0.1':
+                ip = addresses[0]
+                break
+        return ip
 
     def start(self, opts=None):
         """(Re)starts authentication,
@@ -221,8 +238,11 @@ class Service(event_emitter.EventEmitter):
     def register_notification_callback(self):
         """Sends request to register notification callback."""
         try:
+            protocol = 'http'
+            if self.config['ca']:
+                protocol = 'https'
             data = {
-                'url': 'http://localhost:5725/notification',
+                'url':  protocol + '://' + self.ip + ':' + str(self.config['port']) + '/notification',
                 'headers': {}
             }
             content_type = 'application/json'
