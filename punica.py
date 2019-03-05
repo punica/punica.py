@@ -92,7 +92,7 @@ class Service(event_emitter.EventEmitter):
         if hasattr(self, 'server_run') and self.server_run:
             self.shut_down_server()
 
-    def get_devices(self):
+    def get_connected_devices(self):
         """Sends request to get all registered endpoints, that are
         currently registered to the LwM2M service.
 
@@ -103,6 +103,94 @@ class Service(event_emitter.EventEmitter):
             response = self.get('/endpoints')
             if response.status_code == 200:
                 return response.json()
+            else:
+                raise requests.HTTPError(response.status_code)
+        except Exception as ex:
+            raise ex
+
+    def get_registered_devices(self):
+        """Sends request to get all registered device entries.
+
+        Returns:
+        list: List  of registered devices
+        """
+        try:
+            response = self.get('/devices')
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise requests.HTTPError(response.status_code)
+        except Exception as ex:
+            raise ex
+
+    def get_registered_device(self, uuid):
+        """Gets device registration entry.
+
+        Parameters:
+        uuid (str): Device uuid
+
+        Returns:
+        object: Device's entry
+        """
+        try:
+            response = self.get('/devices' + uuid)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise requests.HTTPError(response.status_code)
+        except Exception as ex:
+            raise ex
+
+	def create_registered_device(self, entry):
+        """Sends request to register a new device.
+
+        Parameters:
+        entry (object): Dictonary representing device entry
+
+        Returns:
+        int:  representing status code
+        """
+        try:
+            response = self.post('/devices', entry)
+            if response.status_code == 201:
+                return response.status_code
+            else:
+                raise requests.HTTPError(response.status_code)
+        except Exception as ex:
+            raise ex
+
+	def update_registered_device(self, uuid, entry):
+        """Gets device registration entry.
+
+        Parameters:
+        uuid (str): Device uuid
+        entry (object): A JSON object representing the device entry
+
+        Returns:
+        int: status code
+        """
+        try:
+            response = self.post('/devices', entry)
+            if response.status_code == 201:
+                return response.status_code
+            else:
+                raise requests.HTTPError(response.status_code)
+        except Exception as ex:
+            raise ex
+
+	def remove_registered_device(self, uuid):
+        """Sends request to remove device from registered devices.
+
+        Parameters:
+        uuid (object): Device uuid
+
+        Returns:
+        int: status code
+        """
+        try:
+            response = self.post('/devices', entry)
+            if response.status_code == 200:
+                return response.status_code
             else:
                 raise requests.HTTPError(response.status_code)
         except Exception as ex:
