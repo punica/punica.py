@@ -57,7 +57,7 @@ class Service(event_emitter.EventEmitter):
         """Finds interface and sets IP address. Ignores loopback address.
 
         Returns:
-                str: IP address
+        str: IP address
         """
         ip = 'localhost'
         for iface_name in interfaces():
@@ -238,11 +238,8 @@ class Service(event_emitter.EventEmitter):
     def register_notification_callback(self):
         """Sends request to register notification callback."""
         try:
-            protocol = 'http'
-            if self.config['ca']:
-                protocol = 'https'
             data = {
-                'url':  protocol + '://' + self.ip + ':' + str(self.config['port']) + '/notification',
+                'url': 'http://' + self.ip + ':' + str(self.config['port']) + '/notification',
                 'headers': {}
             }
             content_type = 'application/json'

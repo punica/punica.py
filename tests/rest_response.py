@@ -112,6 +112,8 @@ resp = {
             },
         ],
     },
+    # 'notificationCallback': { url: `http://${ip.address()}:5728/notification`, headers: {} },
+    'badNotificationCallback': {'url': 'http://1.1.1.1:7777/notification', 'headers': {}},
     'registerCallback': '',
     'getEndpoints': [
         {
