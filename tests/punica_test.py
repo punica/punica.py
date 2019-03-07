@@ -9,12 +9,14 @@ import responses
 import requests
 from rest_response import resp
 sys.path.append('../')
-from punica import Service
 from punica import Device
+from punica import Service
 
 SERVICE = Service()
 URL = 'http://localhost:8888'
 DEVICE_NAME = 'threeSeven'
+DEVICE_UUID = "DEF"
+ENTRY = {'psk_id': 'cHNraWQy', 'uuid': 'DEF'}
 PATH = '/3312/0/5850'
 TLV_BUFFER = bytearray([0xe4, 0x16, 0x44, 0x00, 0x00, 0x00, 0x01])
 DEVICE = Device(SERVICE, DEVICE_NAME)
@@ -116,23 +118,23 @@ class TestServiceMethods(unittest.TestCase):
         with self.assertRaises(Exception):
             SERVICE.pull_notification()
 
-    # --------------------------get_devices------------------------------
+    # --------------------------get_connected_devices------------------------------
     @responses.activate
-    def test_get_devices_return(self):
+    def test_get_conn_dev_return(self):
         """
         should return an array of all endponts with their data
         """
         responses.add(responses.GET, URL + '/endpoints',
                       json=resp['endpoints'], status=200)
 
-        response = SERVICE.get_devices()
+        response = SERVICE.get_connected_devices()
         self.assertTrue('name' in response[0].keys())
         self.assertTrue('type' in response[0].keys())
         self.assertTrue('status' in response[0].keys())
         self.assertTrue('q' in response[0].keys())
 
     @responses.activate
-    def test_get_devices_wrong_status(self):
+    def test_get_conn_dev_wrong_status(self):
         """
         shoud raise HTTPError if status code is not 200
         """
@@ -140,14 +142,168 @@ class TestServiceMethods(unittest.TestCase):
                       status=404)
 
         with self.assertRaisesRegexp(requests.HTTPError, '404'):
-            SERVICE.get_devices()
+            SERVICE.get_connected_devices()
 
-    def test_get_devices_failed(self):
+    def test_get_conn_dev_failed(self):
         """
         shoud raise exception if connection is not succesfull
         """
         with self.assertRaises(Exception):
-            SERVICE.get_devices()
+            SERVICE.get_connected_devices()
+
+    # --------------------------get_registered_devices------------------------------
+    @responses.activate
+    def test_get_reg_devs_return(self):
+        """
+        should return an array of all registered device entries
+        """
+        responses.add(responses.GET, URL + '/devices',
+                      json=resp['devicesEntries'], status=200)
+
+        response = SERVICE.get_registered_devices()
+        self.assertTrue('psk_id' in response[0].keys())
+        self.assertTrue('uuid' in response[0].keys())
+
+    @responses.activate
+    def test_get_reg_devs_wrong_status(self):
+        """
+        shoud raise HTTPError if status code is not 200
+        """
+        responses.add(responses.GET, URL + '/devices',
+                      status=404)
+
+        with self.assertRaisesRegexp(requests.HTTPError, '404'):
+            SERVICE.get_registered_devices()
+
+    def test_get_reg_devs_failed(self):
+        """
+        shoud raise exception if connection is not succesfull
+        """
+        with self.assertRaises(Exception):
+            SERVICE.get_registered_devices()
+
+    # --------------------------get_registered_device------------------------------
+    @responses.activate
+    def test_get_reg_device_return(self):
+        """
+        should return device entry
+        """
+        responses.add(responses.GET, URL + '/devices/' + DEVICE_UUID,
+                      json=resp['entry'], status=200)
+
+        response = SERVICE.get_registered_device(DEVICE_UUID)
+        self.assertTrue('uuid' in response.keys())
+        self.assertTrue('psk_id' in response.keys())
+
+    @responses.activate
+    def test_get_reg_dev_wrong_status(self):
+        """
+        shoud raise HTTPError if status code is not 200
+        """
+        responses.add(responses.GET, URL + '/devices/' + DEVICE_UUID,
+                      status=404)
+
+        with self.assertRaisesRegexp(requests.HTTPError, '404'):
+            SERVICE.get_registered_device(DEVICE_UUID)
+
+    def test_get_reg_dev_failed(self):
+        """
+        shoud raise exception if connection is not succesfull
+        """
+        with self.assertRaises(Exception):
+            SERVICE.get_registered_device(DEVICE_UUID)
+
+    # --------------------------create_registered_device------------------------------
+    @responses.activate
+    def test_create_reg_dev_return(self):
+        """
+        should return device entry (object with uuid, psk id, psk)
+        """
+        responses.add(responses.POST, URL + '/devices',
+                      json=resp['createdRegisteredDevice'], status=201)
+
+        response = SERVICE.create_registered_device(ENTRY)
+        self.assertTrue('uuid' in response.keys())
+        self.assertTrue('psk_id' in response.keys())
+        self.assertTrue('psk' in response.keys())
+
+    @responses.activate
+    def test_create_reg_dev_status(self):
+        """
+        shoud raise HTTPError if status code is not 201
+        """
+        responses.add(responses.POST, URL + '/devices',
+                      status=404)
+
+        with self.assertRaisesRegexp(requests.HTTPError, '404'):
+            SERVICE.create_registered_device(ENTRY)
+
+    def test_create_reg_dev_failed(self):
+        """
+        shoud raise exception if connection is not succesfull
+        """
+        with self.assertRaises(Exception):
+            SERVICE.create_registered_device(ENTRY)
+
+    # --------------------------update_registered_device------------------------------
+    @responses.activate
+    def test_update_reg_dev_return(self):
+        """
+        should return status code
+        """
+        responses.add(responses.POST, URL + '/devices/' + DEVICE_UUID,
+                      json=resp['createdRegisteredDevice'], status=201)
+
+        response = SERVICE.update_registered_device(DEVICE_UUID, ENTRY)
+        self.assertTrue(response == 201)
+
+    @responses.activate
+    def test_update_reg_dev_status(self):
+        """
+        shoud raise HTTPError if status code is not 201
+        """
+        responses.add(responses.POST, URL + '/devices/' + DEVICE_UUID,
+                      status=404)
+
+        with self.assertRaisesRegexp(requests.HTTPError, '404'):
+            SERVICE.update_registered_device(DEVICE_UUID, ENTRY)
+
+    def test_update_reg_dev_failed(self):
+        """
+        shoud raise exception if connection is not succesfull
+        """
+        with self.assertRaises(Exception):
+            SERVICE.update_registered_device(DEVICE_UUID, ENTRY)
+
+    # --------------------------remove_registered_device------------------------------
+    @responses.activate
+    def test_remove_reg_dev_return(self):
+        """
+        should return status code
+        """
+        responses.add(responses.DELETE, URL + '/devices/' + DEVICE_UUID,
+                      json=resp['createdRegisteredDevice'], status=200)
+
+        response = SERVICE.remove_registered_device(DEVICE_UUID)
+        self.assertTrue(response == 200)
+
+    @responses.activate
+    def test_remove_reg_dev_status(self):
+        """
+        shoud raise HTTPError if status code is not 200
+        """
+        responses.add(responses.DELETE, URL + '/devices/' + DEVICE_UUID,
+                      status=404)
+
+        with self.assertRaisesRegexp(requests.HTTPError, '404'):
+            SERVICE.remove_registered_device(DEVICE_UUID)
+
+    def test_remove_reg_dev_failed(self):
+        """
+        shoud raise exception if connection is not succesfull
+        """
+        with self.assertRaises(Exception):
+            SERVICE.remove_registered_device(DEVICE_UUID)
 
     # -------------------------get_version--------------------------------
     @responses.activate

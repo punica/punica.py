@@ -175,4 +175,7 @@ resp = {
             },
         ],
     },
+    'entry': {'psk_id': 'cHNraWQy', 'uuid': 'DEF'},
+    'devicesEntries': [{'psk_id': 'cHNraWQx', 'uuid': 'ABC'}, {'psk_id': 'cHNraWQy', 'uuid': 'DEF'}, {'psk_id': 'cHNraWQz', 'uuid': 'GHI'}],
+    'createdRegisteredDevice': {'psk': 'cHNrMQ==', 'psk_id': 'cHNraWQy', 'uuid': 'DEF'}
 }
