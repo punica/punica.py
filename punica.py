@@ -133,7 +133,7 @@ class Service(event_emitter.EventEmitter):
         object: Device's entry
         """
         try:
-            response = self.get('/devices' + uuid)
+            response = self.get('/devices/' + uuid)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -141,7 +141,7 @@ class Service(event_emitter.EventEmitter):
         except Exception as ex:
             raise ex
 
-	def create_registered_device(self, entry):
+    def create_registered_device(self, entry):
         """Sends request to register a new device.
 
         Parameters:
@@ -153,13 +153,13 @@ class Service(event_emitter.EventEmitter):
         try:
             response = self.post('/devices', entry)
             if response.status_code == 201:
-                return response.status_code
+                return response.json()
             else:
                 raise requests.HTTPError(response.status_code)
         except Exception as ex:
             raise ex
 
-	def update_registered_device(self, uuid, entry):
+    def update_registered_device(self, uuid, entry):
         """Gets device registration entry.
 
         Parameters:
@@ -170,7 +170,7 @@ class Service(event_emitter.EventEmitter):
         int: status code
         """
         try:
-            response = self.post('/devices', entry)
+            response = self.post('/devices/' + uuid, entry)
             if response.status_code == 201:
                 return response.status_code
             else:
@@ -178,7 +178,7 @@ class Service(event_emitter.EventEmitter):
         except Exception as ex:
             raise ex
 
-	def remove_registered_device(self, uuid):
+    def remove_registered_device(self, uuid):
         """Sends request to remove device from registered devices.
 
         Parameters:
@@ -188,7 +188,7 @@ class Service(event_emitter.EventEmitter):
         int: status code
         """
         try:
-            response = self.post('/devices', entry)
+            response = self.delete('/devices/' + uuid)
             if response.status_code == 200:
                 return response.status_code
             else:
