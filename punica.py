@@ -2,7 +2,8 @@
 import json
 import threading
 import socket
-import httplib
+import ssl
+#import httplib
 import event_emitter
 import requests
 
@@ -168,7 +169,8 @@ class Service(event_emitter.EventEmitter):
     def create_server(self):
         """Creates socket listener."""
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(('', 5725))
+        self.sock = ssl.wrap_socket(self.sock, ca_certs=self.config['ca'])
+        self.sock.bind(('', self.config['port']))
         self.sock.listen(10)
         self.sock.settimeout(10)
         self.server_run = True
@@ -221,8 +223,11 @@ class Service(event_emitter.EventEmitter):
     def register_notification_callback(self):
         """Sends request to register notification callback."""
         try:
+            protocol = 'http'
+            if self.config['ca']:
+                protocol = 'https'
             data = {
-                'url': 'http://localhost:5725/notification',
+                'url':  protocol + '://localhost:' + str(self.config['port']) + '/notification',
                 'headers': {}
             }
             content_type = 'application/json'
