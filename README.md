@@ -39,15 +39,73 @@ Stops this service and all it's subservices
 that were started in start().
 Cleans up resources
 
-### get_devices
+### get_connected_devices
 ```python
-Service.get_devices(self)
+Service.get_connected_devices(self)
 ```
 Sends request to get all registered endpoints, that are
 currently registered to the LwM2M service.
 
 Returns:
 list: List of endpoints
+
+### get_registered_devices
+```python
+Service.get_registered_devices(self)
+```
+Sends request to get all registered device entries.
+
+Returns:
+list: List  of registered devices
+
+### get_registered_device
+```python
+Service.get_registered_device(self, uuid)
+```
+Gets device registration entry.
+
+Parameters:
+uuid (str): Device uuid
+
+Returns:
+object: Device's entry
+
+### create_registered_device
+```python
+Service.create_registered_device(self, entry)
+```
+Sends request to register a new device.
+
+Parameters:
+entry (object): Dictonary representing device entry
+
+Returns:
+int:  representing status code
+
+### update_registered_device
+```python
+Service.update_registered_device(self, uuid, entry)
+```
+Gets device registration entry.
+
+Parameters:
+uuid (str): Device uuid
+entry (object): A JSON object representing the device entry
+
+Returns:
+int: status code
+
+### remove_registered_device
+```python
+Service.remove_registered_device(self, uuid)
+```
+Sends request to remove device from registered devices.
+
+Parameters:
+uuid (object): Device uuid
+
+Returns:
+int: status code
 
 ### get_version
 ```python
