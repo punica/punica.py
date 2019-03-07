@@ -3,7 +3,7 @@ import json
 import threading
 import socket
 import ssl
-#import httplib
+import httplib
 import event_emitter
 import requests
 
