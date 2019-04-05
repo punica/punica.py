@@ -3,11 +3,12 @@
 import unittest
 import json
 import time
-import httplib
+import urllib.request
 import sys
 import responses
 import requests
 from rest_response import resp
+
 sys.path.append('../')
 from punica import Service
 from punica import Device
@@ -39,17 +40,33 @@ class TestServiceMethods(unittest.TestCase):
                       status=204)
         SERVICE.start({'polling': False, 'authentication': False})
 
+        global RECEIVED_DATA
+        RECEIVED_DATA = False
+
         def callback(status, data):
             """Callback function"""
             self.assertTrue(isinstance(status, int))
-            self.assertTrue(isinstance(data, unicode))
+            self.assertTrue(isinstance(data, str))
             SERVICE.stop()
+            global RECEIVED_DATA
+            RECEIVED_DATA = True
 
         DEVICE.read(PATH, callback)
-        body = json.dumps(resp['readResponse'])
-        conn = httplib.HTTPConnection("localhost", 5725)
-        conn.request("PUT", "/notification", body)
+        headers = {
+            'content-Type': 'application/json',
+            'Content-Length': 197
+        }
+        request_data = {
+            'url': 'http://localhost:5725/notification',
+            'data': bytes(json.dumps(resp['readResponse']), 'utf-8'),
+            'headers': headers,
+            'method': 'PUT'
+        }
+        req = urllib.request.Request(**request_data)
+        urllib.request.urlopen(req)
         SERVICE.server.join()  # test hold
+        while not RECEIVED_DATA:
+            time.sleep(1)
 
     @responses.activate
     def test_start_polling_true(self):

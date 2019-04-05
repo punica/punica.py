@@ -3,7 +3,8 @@ import json
 import threading
 import socket
 import ssl
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import event_emitter
 import requests
 
@@ -39,6 +40,7 @@ class Service(event_emitter.EventEmitter):
         self.authentication_event = threading.Event()
         self.server = threading.Thread(target=self.create_server)
         self.httpd = None
+        self.serverStarted = False
         self.pull_timer = threading.Timer(
             self.config['interval'], self._pull_and_process)
         self.authenticate_timer = threading.Timer(
@@ -73,6 +75,8 @@ class Service(event_emitter.EventEmitter):
                 self._pull_and_process()
             else:
                 self.server.start()
+                while not self.serverStarted:
+                    time.sleep(1)
                 self.register_notification_callback()
         except Exception as ex:
             raise ex
@@ -186,15 +190,16 @@ class Service(event_emitter.EventEmitter):
                 self.end_headers()
                 self.wfile.write(content)
                 parsed_json = json.loads(content)
-                self.process(parsed_json)
+                process_events_thread = threading.Thread(
+                    target=self.process, args=(parsed_json,))
+                process_events_thread.start()
 
         def event_request_handler(*args):
             """Passes events to request handler"""
             RequestHandler(self._process_events, *args)
 
-        self.httpd = ThreadingHTTPServer(
+        self.httpd = HTTPServer(
             ('', self.config['port']), event_request_handler)
-
         if self.config['key'] and self.config['cert'] and self.config['ca']:
             self.httpd.socket = ssl.wrap_socket(
                 self.httpd.socket,
@@ -203,6 +208,7 @@ class Service(event_emitter.EventEmitter):
                 ca_certs=self.config['ca'],
                 server_side=True)
 
+        self.serverStarted = True
         self.httpd.serve_forever()
 
     def authenticate(self):
@@ -229,6 +235,10 @@ class Service(event_emitter.EventEmitter):
     def shut_down_server(self):
         """Shuts down socket listener"""
         self.httpd.shutdown()
+        self.httpd.socket.close()
+        self.httpd = None
+        self.serverStarted = False
+        self.server = None
 
     def register_notification_callback(self):
         """Sends request to register notification callback."""
