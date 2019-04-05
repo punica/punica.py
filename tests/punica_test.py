@@ -7,7 +7,7 @@ import urllib.request
 import sys
 import responses
 import requests
-from rest_response import resp
+from tests.rest_response import resp
 
 sys.path.append('../')
 from punica import Service
