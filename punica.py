@@ -189,7 +189,7 @@ class Service(event_emitter.EventEmitter):
                 self.send_response(200, self.headers)
                 self.end_headers()
                 self.wfile.write(content)
-                parsed_json = json.loads(content)
+                parsed_json = json.loads(content.decode('utf-8'))
                 process_events_thread = threading.Thread(
                     target=self.process, args=(parsed_json,))
                 process_events_thread.start()
