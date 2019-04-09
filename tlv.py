@@ -358,7 +358,7 @@ def encode(obj):
     if obj['identifier'] >= (1 << 8):
         type_byte += 1 << 5
         identifier_buffer = bytearray([
-            obj['identifier'] / (1 << 8),
+            int(obj['identifier'] / (1 << 8)),
             obj['identifier'] % (1 << 8),
         ])
     else:
@@ -368,15 +368,15 @@ def encode(obj):
         type_byte += 3 << 3
 
         length_buffer = bytearray([
-            len(obj['value']) / (1 << 16),
-            int((len(obj['value']) / (1 << 8) >> (8 * 0)) & 0xFF),
+            int(len(obj['value']) / (1 << 16)),
+            int((int(len(obj['value']) / (1 << 8)) >> (8 * 0)) & 0xFF),
             len(obj['value']) % (1 << 8),
         ])
     elif len(obj['value']) >= (1 << 8):
         type_byte += 2 << 3
 
         length_buffer = bytearray([
-            len(obj['value']) / (1 << 8),
+            int(len(obj['value']) / (1 << 8)),
             len(obj['value']) % (1 << 8),
         ])
     elif len(obj['value']) >= (1 << 3):
