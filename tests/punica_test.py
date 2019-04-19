@@ -8,7 +8,7 @@ import ssl
 import sys
 import responses
 import requests
-from rest_response import resp
+from tests.rest_response import resp
 sys.path.append('../')
 from punica import Device
 from punica import Service
@@ -16,10 +16,10 @@ from punica import Service
 SERVICE = Service()
 URL = 'http://localhost:8888'
 URL_HTTPS = 'https://localhost:8888'
-SERVER_KEY = '../server.key'
-SERVER_CERT = '../server.pem'
-TEST_KEY = './test.key'
-TEST_CERT = './test.pem'
+SERVER_KEY = './server.key'
+SERVER_CERT = './server.pem'
+TEST_KEY = 'tests/test.key'
+TEST_CERT = 'tests/test.pem'
 DEVICE_NAME = 'threeSeven'
 PATH = '/3312/0/5850'
 TLV_BUFFER = bytearray([0xe4, 0x16, 0x44, 0x00, 0x00, 0x00, 0x01])
