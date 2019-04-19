@@ -113,7 +113,7 @@ class TestServiceMethods(unittest.TestCase):
             'headers': headers,
             'method': 'PUT'
         }
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+        context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         context.load_cert_chain(certfile=TEST_CERT, keyfile=TEST_KEY)
         req = urllib.request.Request(**request_data)
         urllib.request.urlopen(req, context=context)
