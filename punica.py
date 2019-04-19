@@ -2,7 +2,9 @@
 import json
 import threading
 import socket
-import httplib
+import ssl
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import event_emitter
 import requests
 
@@ -20,7 +22,9 @@ class Service(event_emitter.EventEmitter):
         super(Service, self).__init__()
         self.config = {
             'host': 'http://localhost:8888',
-            'ca': '',
+            'ca': None,
+            'cert': None,
+            'key': None,
             'authentication': False,
             'username': '',
             'password': '',
@@ -33,10 +37,9 @@ class Service(event_emitter.EventEmitter):
         self.authentication_token = ''
         self.token_validation = 3600
         self.pull_event = threading.Event()
-        self.server_run = False
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.authentication_event = threading.Event()
-        self.server = threading.Thread(target=self.create_server)
+        self.httpd = None
+        self.serverStarted = False
         self.pull_timer = threading.Timer(
             self.config['interval'], self._pull_and_process)
         self.authenticate_timer = threading.Timer(
@@ -70,7 +73,10 @@ class Service(event_emitter.EventEmitter):
                 self.pull_event.set()
                 self._pull_and_process()
             else:
+                self.server = threading.Thread(target=self.create_server)
                 self.server.start()
+                while not self.serverStarted:
+                    time.sleep(1)
                 self.register_notification_callback()
         except Exception as ex:
             raise ex
@@ -89,7 +95,8 @@ class Service(event_emitter.EventEmitter):
             self.pull_event.clear()
             self.pull_timer.cancel()
 
-        if hasattr(self, 'server_run') and self.server_run:
+        if self.httpd:
+            self.delete_notification_callback()
             self.shut_down_server()
 
     def get_devices(self):
@@ -166,29 +173,43 @@ class Service(event_emitter.EventEmitter):
                 self.authenticate_timer.start()
 
     def create_server(self):
-        """Creates socket listener."""
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(('', 5725))
-        self.sock.listen(10)
-        self.sock.settimeout(10)
-        self.server_run = True
-        while self.server_run:
-            (conn, _) = self.sock.accept()
-            data = conn.recv(1024)
-            if not data:
-                break
-            (_, json_data) = data.split("\r\n\r\n")
-            if json_data:
-                parsed_json = json.loads(json_data)
-            reply = 'OK...' + data
+        """Creates HTTP/HTTPS server which receives notifications"""
 
-            conn.sendall(reply)
-            conn.close()
-            if parsed_json:
+        class RequestHandler(BaseHTTPRequestHandler):
+            """Class for handling requests"""
+
+            def __init__(self, process, *args):
+                self.process = process
+                BaseHTTPRequestHandler.__init__(self, *args)
+
+            def do_PUT(self):
+                """Handles PUT requests"""
+                length = int(self.headers['Content-Length'])
+                content = self.rfile.read(length)
+                self.send_response(200, self.headers)
+                self.end_headers()
+                self.wfile.write(content)
+                parsed_json = json.loads(content.decode('utf-8'))
                 process_events_thread = threading.Thread(
-                    target=self._process_events, args=(parsed_json,))
+                    target=self.process, args=(parsed_json,))
                 process_events_thread.start()
-        self.sock.close()
+
+        def event_request_handler(*args):
+            """Passes events to request handler"""
+            RequestHandler(self._process_events, *args)
+
+        self.httpd = HTTPServer(
+            ('', self.config['port']), event_request_handler)
+        if self.config['key'] and self.config['cert'] and self.config['ca']:
+            self.httpd.socket = ssl.wrap_socket(
+                self.httpd.socket,
+                keyfile=self.config['key'],
+                certfile=self.config['cert'],
+                ca_certs=self.config['ca'],
+                server_side=True)
+
+        self.serverStarted = True
+        self.httpd.serve_forever()
 
     def authenticate(self):
         """Sends request to authenticate user.
@@ -213,18 +234,19 @@ class Service(event_emitter.EventEmitter):
 
     def shut_down_server(self):
         """Shuts down socket listener"""
-        self.server_run = False
-        conn = httplib.HTTPConnection("localhost", self.config['port'])
-        conn.request("PUT", "/notification", '')
-        self.delete_notification_callback()
+        self.httpd.shutdown()
+        self.httpd.socket.close()
+        self.httpd = None
+        self.serverStarted = False
 
     def register_notification_callback(self):
         """Sends request to register notification callback."""
         try:
-            data = {
-                'url': 'http://localhost:5725/notification',
-                'headers': {}
-            }
+            protocol = 'http'
+            if self.config['ca']:
+                protocol = 'https'
+            data = {'url': protocol + '://localhost:' +
+                    str(self.config['port']) + '/notification', 'headers': {}}
             content_type = 'application/json'
             response = self.put('/notification/callback', data, content_type)
             if response.status_code == 204:
