@@ -16,6 +16,10 @@ from punica import Device
 SERVICE = Service()
 URL = 'http://localhost:8888'
 URL_HTTPS = 'https://localhost:8888'
+SERVER_KEY = '../server.key'
+SERVER_CERT = '../server.pem'
+TEST_KEY = './test.key'
+TEST_CERT = './test.pem'
 DEVICE_NAME = 'threeSeven'
 PATH = '/3312/0/5850'
 TLV_BUFFER = bytearray([0xe4, 0x16, 0x44, 0x00, 0x00, 0x00, 0x01])
@@ -63,7 +67,6 @@ class TestServiceMethods(unittest.TestCase):
 			'headers': headers,
 			'method': 'PUT'
 		}
-		print("TUOJ BUS")
 		req = urllib.request.Request(**request_data)
 		urllib.request.urlopen(req)
 		SERVICE.server.join()  # test hold
@@ -85,7 +88,7 @@ class TestServiceMethods(unittest.TestCase):
 		responses.add_passthru('https://localhost:5725/notification')
 		responses.add(responses.DELETE, URL + '/notification/callback',
 					  status=204)
-		SERVICE.start({'ca': "../certificatee.pem", 'cert': '../naukas.pem', 'key': '../naujas.key'})
+		SERVICE.start({'ca': TEST_CERT, 'cert': SERVER_CERT, 'key': SERVER_KEY})
 
 		global RECEIVED_DATA
 		RECEIVED_DATA = False
@@ -110,9 +113,9 @@ class TestServiceMethods(unittest.TestCase):
 			'method': 'PUT'
 		}
 		context = ssl.SSLContext()
-		context.load_cert_chain(certfile ='../certificate.pem', keyfile='../private.key')
+		context.load_cert_chain(certfile =TEST_CERT, keyfile=TEST_KEY)
 		req = urllib.request.Request(**request_data)
-		urllib.request.urlopen(req, context= context)		##, cafile = '../certificatee.pem', cadefault=True)
+		urllib.request.urlopen(req, context= context)
 		SERVICE.server.join()  # test hold
 		while not RECEIVED_DATA:
 			time.sleep(1)
