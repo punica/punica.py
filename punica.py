@@ -38,7 +38,6 @@ class Service(event_emitter.EventEmitter):
         self.token_validation = 3600
         self.pull_event = threading.Event()
         self.authentication_event = threading.Event()
-        self.server = threading.Thread(target=self.create_server)
         self.httpd = None
         self.serverStarted = False
         self.pull_timer = threading.Timer(
@@ -74,6 +73,7 @@ class Service(event_emitter.EventEmitter):
                 self.pull_event.set()
                 self._pull_and_process()
             else:
+                self.server = threading.Thread(target=self.create_server)
                 self.server.start()
                 while not self.serverStarted:
                     time.sleep(1)
@@ -238,7 +238,6 @@ class Service(event_emitter.EventEmitter):
         self.httpd.socket.close()
         self.httpd = None
         self.serverStarted = False
-        self.server = None
 
     def register_notification_callback(self):
         """Sends request to register notification callback."""
