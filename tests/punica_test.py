@@ -236,26 +236,26 @@ class TestServiceMethods(unittest.TestCase):
 	should return an object with valid notification callback data
 	"""
 	responses.add(responses.GET, URL + '/notification/callback',
-                        json=resp['notificationCallback'], status=200)
+			json=resp['notificationCallback'], status=200)
 	response = SERVICE.check_notification_callback()
 	self.assertTrue(response == resp['notificationCallback'])
 
     @responses.activate
     def test_get_notification_cb_invalid(self):
-	"""
+        """
 	should raise exception if notification callback doesnt match service parameters
 	"""
 	responses.add(responses.GET, URL + '/notification/callback',
 			json=resp['badNotificationCallback'], status=200)
-	    with self.assertRaises(Exception):
-	        SERVICE.check_notification_callback()
+	with self.assertRaises(Exception):
+	    SERVICE.check_notification_callback()
 
     def test_get_notification_cb_conn_fail(self):
         """
         should raise exception if connection is not succesfull
         """
 	with self.assertRaises(Exception):
-            SERVICE.check_notification_callback()
+	    SERVICE.check_notification_callback()
 
     # ----------------------delete_notification_callback-------------------
     @responses.activate
