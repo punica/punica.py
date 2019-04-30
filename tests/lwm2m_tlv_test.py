@@ -1,5 +1,7 @@
 """ Tests for LwM2M TLV encoding, decoding methods """
 import unittest
+import sys
+sys.path.append('../')
 from tlv import RESOURCE_TYPE, TYPE, encode_resource_value, \
 	decode_resource_value, encode, decode, encode_resource, \
 	decode_resource, encode_resource_instance, \
