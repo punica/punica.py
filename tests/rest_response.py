@@ -115,6 +115,7 @@ resp = {
         ],
     },
     'notificationCallback': { 'url': 'http://' + get_ip_address() +':5725/notification', 'headers': {} },
+    'notificationCallbackHTTPS': { 'url': 'https://' + get_ip_address() +':5725/notification', 'headers': {} },
     'badNotificationCallback': {'url': 'http://1.1.1.1:7777/notification', 'headers': {}},
     'registerCallback': '',
     'getEndpoints': [
