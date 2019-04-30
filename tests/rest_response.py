@@ -1,4 +1,6 @@
 """This module represesnts responses of punica server"""
+from get_ip import get_ip_address
+
 resp = {
     'authentication': {
         'access_token': 'eyJ0eXMiJ9.eyJppbiJ9.2HBtDz-bzdTPcYu-rNbwG-J9NC3P-f7kT6_YsNA',
@@ -112,7 +114,7 @@ resp = {
             },
         ],
     },
-    # 'notificationCallback': { url: `http://${ip.address()}:5728/notification`, headers: {} },
+    'notificationCallback': { 'url': 'http://' + get_ip_address() +':5725/notification', 'headers': {} },
     'badNotificationCallback': {'url': 'http://1.1.1.1:7777/notification', 'headers': {}},
     'registerCallback': '',
     'getEndpoints': [
