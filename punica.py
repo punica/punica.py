@@ -238,14 +238,36 @@ class Service(event_emitter.EventEmitter):
     def register_notification_callback(self):
         """Sends request to register notification callback."""
         try:
-            data = {
-                'url': 'http://' + self.ip + ':' + str(self.config['port']) + '/notification',
-                'headers': {}
-            }
+            data = {'url': 'http://' + self.ip + ':' +
+                    str(self.config['port']) + '/notification', 'headers': {}}
             content_type = 'application/json'
             response = self.put('/notification/callback', data, content_type)
             if response.status_code == 204:
                 return response.status_code
+            else:
+                raise requests.HTTPError(response.status_code)
+        except Exception as ex:
+            raise ex
+
+    def check_notification_callback(self):
+        """Sends request to check whether or not notification
+
+        Returns:
+        object: notification callback data
+        """
+        try:
+            response = self.get('/notification/callback')
+            if response.status_code == 200:
+                data = response.json()
+                protocol = 'http://'
+                if self.config['ca']:
+                    protocol = 'https://'
+                if data['url'] == protocol + self.ip + ':' + \
+                        str(self.config['port']) + '/notification':
+                    return data
+                else:
+                    raise Exception(
+                        {'message': 'Invalid notification callback is registered', 'status': 'EINVALIDCALLBACK'})
             else:
                 raise requests.HTTPError(response.status_code)
         except Exception as ex:
