@@ -241,7 +241,7 @@ class TestServiceMethods(unittest.TestCase):
         self.assertTrue(response == resp['notificationCallback'])
 
     @responses.activate
-    def test_get_notification_cb_https_return(self):
+    def test_get_notification_cb_https(self):
         """
         should return an object with valid notification callback data
         """
@@ -253,7 +253,7 @@ class TestServiceMethods(unittest.TestCase):
         self.assertTrue(response == resp['notificationCallbackHTTPS'])
 
     @responses.activate
-    def test_get_notification_cb_invalid(self):
+    def test_get_notification_cb_wrong(self):
         """
         should raise exception if notification callback doesnt match service parameters
         """
@@ -262,7 +262,7 @@ class TestServiceMethods(unittest.TestCase):
         with self.assertRaises(Exception):
             SERVICE.check_notification_callback()
 
-    def test_get_notification_cb_conn_fail(self):
+    def test_get_notification_cb_fail(self):
         """
         should raise exception if connection is not succesfull
         """

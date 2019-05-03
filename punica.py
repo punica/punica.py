@@ -5,7 +5,7 @@ import socket
 import httplib
 import event_emitter
 import requests
-from netifaces import interfaces, ifaddresses, AF_INET
+import netifaces
 
 
 class Service(event_emitter.EventEmitter):
@@ -31,7 +31,7 @@ class Service(event_emitter.EventEmitter):
         }
         if opts is not None:
             self.configure(opts)
-        self.ip = self.get_ip_address()
+        self.get_ip_address()
         self.authentication_token = ''
         self.token_validation = 3600
         self.pull_event = threading.Event()
@@ -54,19 +54,14 @@ class Service(event_emitter.EventEmitter):
             self.config[opt] = opts[opt]
 
     def get_ip_address(self):
-        """Finds interface and sets IP address. Ignores loopback address.
-
-        Returns:
-        str: IP address
-        """
-        ip = 'localhost'
-        for iface_name in interfaces():
-            addresses = [i['addr'] for i in ifaddresses(
-                iface_name).setdefault(AF_INET, [{'addr': ''}])]
+        """Finds interface and sets IP address. Ignores loopback address."""
+        self.ip_address = 'localhost'
+        for iface_name in netifaces.interfaces():
+            addresses = [i['addr'] for i in netifaces.ifaddresses(
+                iface_name).setdefault(netifaces.AF_INET, [{'addr': ''}])]
             if addresses[0] and addresses[0] != '127.0.0.1':
-                ip = addresses[0]
+                self.ip_address = addresses[0]
                 break
-        return ip
 
     def start(self, opts=None):
         """(Re)starts authentication,
@@ -238,8 +233,10 @@ class Service(event_emitter.EventEmitter):
     def register_notification_callback(self):
         """Sends request to register notification callback."""
         try:
-            data = {'url': 'http://' + self.ip + ':' +
-                    str(self.config['port']) + '/notification', 'headers': {}}
+            data = {'url': 'http://' + self.ip_address + ':' +
+                           str(self.config['port']) + '/notification',
+                    'headers': {}
+                   }
             content_type = 'application/json'
             response = self.put('/notification/callback', data, content_type)
             if response.status_code == 204:
@@ -262,12 +259,16 @@ class Service(event_emitter.EventEmitter):
                 protocol = 'http://'
                 if self.config['ca']:
                     protocol = 'https://'
-                if data['url'] == protocol + self.ip + ':' + \
+                if data['url'] == protocol + self.ip_address + ':' + \
                         str(self.config['port']) + '/notification':
                     return data
                 else:
                     raise Exception(
-                        {'message': 'Invalid notification callback is registered', 'status': 'EINVALIDCALLBACK'})
+                        {
+                            'message': 'Invalid notification callback is registered',
+                            'status': 'EINVALIDCALLBACK'
+                        }
+                    )
             else:
                 raise requests.HTTPError(response.status_code)
         except Exception as ex:
