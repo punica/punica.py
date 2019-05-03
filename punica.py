@@ -234,9 +234,7 @@ class Service(event_emitter.EventEmitter):
         """Sends request to register notification callback."""
         try:
             data = {'url': 'http://' + self.ip_address + ':' +
-                           str(self.config['port']) + '/notification',
-                    'headers': {}
-                   }
+                           str(self.config['port']) + '/notification', 'headers': {}}
             content_type = 'application/json'
             response = self.put('/notification/callback', data, content_type)
             if response.status_code == 204:
