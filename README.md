@@ -92,6 +92,15 @@ Shuts down socket listener
 Service.register_notification_callback(self)
 ```
 Sends request to register notification callback.
+### check_notification_callback
+```python
+Service.check_notification_callback(self)
+```
+Sends request to check whether or not notification callback is registered.
+
+Returns:
+object: notification callback data
+
 ### delete_notification_callback
 ```python
 Service.delete_notification_callback(self)
