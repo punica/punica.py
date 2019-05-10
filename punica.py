@@ -246,6 +246,7 @@ class Service(event_emitter.EventEmitter):
 
     def check_notification_callback(self):
         """Sends request to check whether or not notification
+        callback is registered.
 
         Returns:
         object: notification callback data
